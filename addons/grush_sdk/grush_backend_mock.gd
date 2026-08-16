@@ -99,9 +99,47 @@ func _handle(method: String, params: Dictionary) -> Dictionary:
 		"net.leave":
 			_leave()
 			return Result.ok(null)
+		"leaderboard.list":
+			return Result.ok(GRushMockLeaderboards.list_wire())
+		"leaderboard.submit":
+			return _submit_score(params)
+		"leaderboard.top":
+			return _leaderboard_page(params, false)
+		"leaderboard.aroundMe":
+			return _leaderboard_page(params, true)
+		"leaderboard.friends":
+			return Result.failure(
+				Result.CODE_CONSENT_DECLINED,
+				"Friend leaderboards require per-game friend consent."
+			)
 	return Result.failure(
 		Result.CODE_UNSUPPORTED, "The mock backend does not implement %s." % method
 	)
+
+
+func _submit_score(params: Dictionary) -> Dictionary:
+	var key := str(params.get("key", ""))
+	if key == "":
+		return Result.failure(Result.CODE_INVALID_PARAMS, "A leaderboard key is required.")
+	var outcome := GRushMockLeaderboards.submit(
+		key, float(params.get("value", 0.0)), params.get("metadata", null), _local_pseudo_id()
+	)
+	if outcome.has("error"):
+		return Result.failure(Result.CODE_INVALID_PARAMS, str(outcome["message"]))
+	return Result.ok(outcome)
+
+
+func _leaderboard_page(params: Dictionary, around_me: bool) -> Dictionary:
+	var key := str(params.get("key", ""))
+	if key == "":
+		return Result.failure(Result.CODE_INVALID_PARAMS, "A leaderboard key is required.")
+	var window := int(params.get("range", 0)) if around_me else int(params.get("limit", 0))
+	var outcome := GRushMockLeaderboards.page(
+		key, window, int(params.get("offset", 0)), around_me
+	)
+	if outcome.has("error"):
+		return Result.failure(Result.CODE_INVALID_PARAMS, str(outcome["message"]))
+	return Result.ok(outcome)
 
 
 func _request_profile() -> Dictionary:

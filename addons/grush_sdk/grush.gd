@@ -12,10 +12,12 @@ const WebBackend := preload("res://addons/grush_sdk/grush_backend_web.gd")
 const MockBackend := preload("res://addons/grush_sdk/grush_backend_mock.gd")
 const PlayerApi := preload("res://addons/grush_sdk/grush_player_api.gd")
 const NetApi := preload("res://addons/grush_sdk/grush_net_api.gd")
+const LeaderboardsApi := preload("res://addons/grush_sdk/grush_leaderboards_api.gd")
 
 var backend: RefCounted
 var player: RefCounted
 var net: RefCounted
+var leaderboards: RefCounted
 
 
 func _ready() -> void:
@@ -31,6 +33,7 @@ func use_backend(replacement: RefCounted) -> void:
 	backend = replacement if replacement != null else _create_backend()
 	player = PlayerApi.new(self, backend)
 	net = NetApi.new(self, backend)
+	leaderboards = LeaderboardsApi.new(self, backend)
 
 
 func _dispose() -> void:
@@ -39,6 +42,7 @@ func _dispose() -> void:
 	backend = null
 	player = null
 	net = null
+	leaderboards = null
 
 
 func is_available() -> bool:
