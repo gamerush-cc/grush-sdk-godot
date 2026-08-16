@@ -25,7 +25,7 @@ func is_available() -> bool:
 
 
 func protocol_version() -> int:
-	return 1
+	return 2
 
 
 func set_net_event_handler(handler: Callable) -> void:
@@ -112,9 +112,42 @@ func _handle(method: String, params: Dictionary) -> Dictionary:
 				Result.CODE_CONSENT_DECLINED,
 				"Friend leaderboards require per-game friend consent."
 			)
+		"playerState.getMine":
+			return Result.ok({"state": _mock_player_state})
+		"playerState.setMine":
+			return _set_player_state(params)
+		"playerState.get":
+			return Result.ok({"states": GRushMockPlayerStates.get_many(params.get("pseudoIds", []))})
+		"playerState.report":
+			return Result.ok({"reported": GRushMock.confirm_player_state_report})
 	return Result.failure(
 		Result.CODE_UNSUPPORTED, "The mock backend does not implement %s." % method
 	)
+
+
+var _mock_player_state: Variant = null
+
+
+## モックでも payload の形だけは実サーバと同じに縛る。エディタで通った
+## ものが実環境で 400 になると、作者は原因を掴めない。
+func _set_player_state(params: Dictionary) -> Dictionary:
+	var payload: Variant = params.get("payload", null)
+	if not (payload is Dictionary):
+		return Result.failure(
+			Result.CODE_INVALID_PARAMS, "Player state payload must be a JSON object."
+		)
+	if JSON.stringify(payload).length() > 4096:
+		return Result.failure(Result.CODE_INVALID_PARAMS, "Player state payload is too large.")
+	var revision := 1
+	if _mock_player_state is Dictionary:
+		revision = int(_mock_player_state["revision"]) + 1
+	_mock_player_state = {
+		"pseudoId": _local_pseudo_id(),
+		"payload": payload,
+		"revision": revision,
+		"updatedAt": "",
+	}
+	return Result.ok({"state": _mock_player_state})
 
 
 func _submit_score(params: Dictionary) -> Dictionary:
