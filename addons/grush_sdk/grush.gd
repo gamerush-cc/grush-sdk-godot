@@ -51,10 +51,10 @@ func protocol_version() -> int:
 	return 0 if backend == null else backend.protocol_version()
 
 
-func mock_add_peer(display_name: String) -> RefCounted:
+func mock_add_peer(display_name: String, avatar_url: Variant = null) -> RefCounted:
 	if backend == null or not backend.has_method("add_peer"):
 		return null
-	return backend.add_peer(display_name)
+	return backend.add_peer(display_name, avatar_url)
 
 
 func mock_remove_peer(peer: RefCounted) -> void:

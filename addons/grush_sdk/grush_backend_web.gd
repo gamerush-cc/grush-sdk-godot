@@ -178,10 +178,12 @@ static func _peer_of(peer: Variant) -> Dictionary:
 	if peer == null:
 		return {}
 	var display_name: Variant = peer["displayName"]
+	var avatar_url: Variant = peer["avatarUrl"]
 	return {
 		"index": int(peer["index"]),
 		"pseudoId": str(peer["pseudoId"]),
 		"displayName": null if display_name == null else str(display_name),
+		"avatarUrl": null if avatar_url == null else str(avatar_url),
 	}
 
 

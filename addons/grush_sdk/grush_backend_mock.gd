@@ -42,11 +42,12 @@ func send(payload: PackedByteArray, channel: String, to: int) -> void:
 	route(_local_index, payload, channel, to)
 
 
-func add_peer(display_name: String) -> RefCounted:
+func add_peer(display_name: String, avatar_url: Variant = null) -> RefCounted:
 	var peer := MockPeer.new(self)
 	peer.index = _next_free_index()
 	peer.pseudo_id = "mock-peer-%d" % peer.index
 	peer.display_name = display_name
+	peer.avatar_url = avatar_url
 	_members.append({"index": peer.index, "peer": peer})
 	_members.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["index"] < b["index"])
 	_announce("peerjoin", peer.index, _peer_wire(peer.index))
@@ -195,13 +196,19 @@ func _peer_wire(index: int) -> Dictionary:
 			continue
 		var peer: Variant = entry.get("peer")
 		if peer != null:
-			return {"index": index, "pseudoId": peer.pseudo_id, "displayName": peer.display_name}
+			return {
+				"index": index,
+				"pseudoId": peer.pseudo_id,
+				"displayName": peer.display_name,
+				"avatarUrl": peer.avatar_url,
+			}
 		return {
 			"index": index,
 			"pseudoId": _local_pseudo_id(),
 			"displayName": GRushMock.display_name if _consented else null,
+			"avatarUrl": GRushMock.avatar_url if _consented else null,
 		}
-	return {"index": index, "pseudoId": "", "displayName": null}
+	return {"index": index, "pseudoId": "", "displayName": null, "avatarUrl": null}
 
 
 func _player_wire(consented: bool) -> Dictionary:

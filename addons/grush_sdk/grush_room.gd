@@ -152,6 +152,7 @@ static func _peer_of(raw: Dictionary) -> Dictionary:
 		"index": int(raw.get("index", -1)),
 		"pseudo_id": str(raw.get("pseudoId", raw.get("pseudo_id", ""))),
 		"display_name": raw.get("displayName", raw.get("display_name", null)),
+		"avatar_url": raw.get("avatarUrl", raw.get("avatar_url", null)),
 	}
 
 

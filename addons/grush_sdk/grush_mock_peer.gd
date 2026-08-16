@@ -6,6 +6,7 @@ signal received(message: Dictionary)
 var index := -1
 var pseudo_id := ""
 var display_name: Variant = null
+var avatar_url: Variant = null
 
 var _hub: WeakRef
 
