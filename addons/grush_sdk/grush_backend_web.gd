@@ -70,6 +70,8 @@ func send(payload: PackedByteArray, channel: String, to: int) -> void:
 func _invoke(method: String, params: Dictionary) -> Variant:
 	var player := JavaScriptBridge.get_interface("GRushPlayer")
 	var net := JavaScriptBridge.get_interface("GRushNet")
+	var boards := JavaScriptBridge.get_interface("GRushLeaderboards")
+	var states := JavaScriptBridge.get_interface("GRushPlayerState")
 	match method:
 		"player.getSelf":
 			return player.getSelf() if player != null else null
@@ -85,7 +87,84 @@ func _invoke(method: String, params: Dictionary) -> Variant:
 			var leaving := _room
 			_release_room()
 			return leaving.leave() if leaving != null else null
+		"leaderboard.list":
+			return boards.list() if boards != null else null
+		"leaderboard.submit":
+			if boards == null:
+				return null
+			return boards.submit(
+				params.get("key", ""),
+				params.get("value", 0.0),
+				_js_value(params.get("metadata")),
+				params.get("operationId")
+			)
+		"leaderboard.top":
+			return boards.top(params.get("key", ""), _js_value(params)) if boards != null else null
+		"leaderboard.aroundMe":
+			if boards == null:
+				return null
+			return boards.aroundMe(params.get("key", ""), _js_value(params))
+		"leaderboard.friends":
+			if boards == null:
+				return null
+			return boards.friends(params.get("key", ""), _js_value(params))
+		"playerState.getMine":
+			return states.getMine() if states != null else null
+		"playerState.setMine":
+			if states == null:
+				return null
+			return states.setMine(
+				_js_value(params.get("payload", {})), params.get("baseRevision")
+			)
+		"playerState.get":
+			var shim := _shim()
+			if states == null or shim == null:
+				return null
+			return shim.playerStateGet(_js_value(params.get("pseudoIds", [])))
+		"playerState.report":
+			return states.report(params.get("pseudoId", "")) if states != null else null
 	return null
+
+
+const SHIM_JS := """
+(function () {
+  if (window.__grushSdkShim) return;
+  window.__grushSdkShim = {
+    playerStateGet: function (ids) {
+      return window.GRushPlayerState ? window.GRushPlayerState.get(ids) : null;
+    }
+  };
+})();
+"""
+
+
+static var _shim_installed := false
+
+
+static func _shim() -> JavaScriptObject:
+	if not _shim_installed:
+		JavaScriptBridge.eval(SHIM_JS, true)
+		_shim_installed = true
+	return JavaScriptBridge.get_interface("__grushSdkShim")
+
+
+static func _js_value(value: Variant) -> Variant:
+	if value == null:
+		return null
+	var js_json := JavaScriptBridge.get_interface("JSON")
+	if js_json == null:
+		return null
+	return js_json.parse(JSON.stringify(value))
+
+
+static func _gd_value(value: Variant) -> Variant:
+	if value == null:
+		return null
+	var js_json := JavaScriptBridge.get_interface("JSON")
+	if js_json == null:
+		return null
+	var text: Variant = js_json.stringify(value)
+	return null if text == null else JSON.parse_string(str(text))
 
 
 func _settle(token: int, method: String, on_done: Callable, ok: bool, args: Array) -> void:
@@ -102,6 +181,21 @@ func _value_of(method: String, value: Variant) -> Variant:
 		return _bind_room(value)
 	if method.begins_with("player."):
 		return _player_of(value)
+	match method:
+		"leaderboard.list":
+			var boards: Variant = _gd_value(value)
+			return {"leaderboards": boards if boards is Array else []}
+		"leaderboard.submit":
+			return {"result": _gd_value(value)}
+		"leaderboard.top", "leaderboard.aroundMe", "leaderboard.friends":
+			return {"leaderboard": _gd_value(value)}
+		"playerState.getMine", "playerState.setMine":
+			return {"state": _gd_value(value)}
+		"playerState.get":
+			var states: Variant = _gd_value(value)
+			return {"states": states if states is Array else []}
+		"playerState.report":
+			return {"reported": bool(value) if value != null else false}
 	return null
 
 

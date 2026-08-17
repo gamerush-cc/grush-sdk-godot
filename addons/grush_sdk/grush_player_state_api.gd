@@ -52,7 +52,7 @@ func set_mine(payload: Dictionary, base_revision: Variant = null) -> Dictionary:
 
 ## 他プレイヤーの状態を疑似IDで引く（1回 50 件まで）。
 ## **運営が hidden にしたものは返らない。**
-func get(pseudo_ids: Array) -> Dictionary:
+func get_many(pseudo_ids: Array) -> Dictionary:
 	var response := await _call("playerState.get", {"pseudoIds": pseudo_ids})
 	if not response["ok"]:
 		return response
