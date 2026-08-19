@@ -1,6 +1,6 @@
 # GameRush SDK for Godot 4
 
-GameRush の GameAPI を Godot 4 から呼ぶアドオン。ビルドの書き出し方は [対応エンジンと書き出しガイド](https://gamerush.cc/engines)。
+GameRush の GameAPI を Godot 4 から呼ぶアドオン。ビルドの書き出し方は [対応エンジンと書き出しガイド](https://gamerush.cc/engines)。使い方の正（ランキング・公開プレイヤー状態・投稿が弾かれる条件とエラーコード・API トークン）は [SDK ガイド](https://gamerush.cc/sdk)。
 
 ## 導入
 
