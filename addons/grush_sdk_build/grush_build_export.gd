@@ -4,8 +4,8 @@ extends RefCounted
 const Settings := preload("res://addons/grush_sdk_build/grush_build_settings.gd")
 
 const MAX_BUILD_FILE_COUNT := 2000
-const MAX_BUILD_BYTES := 314572800
-const WARN_BUILD_BYTES := 31457280
+const MAX_BUILD_BYTES := 52428800
+const WARN_BUILD_BYTES := 15728640
 const REQUIRED_OUTPUTS := ["index.html", "index.pck", "index.wasm", "index.js"]
 const MODIFIED_TIME_TOLERANCE := 2
 const GDIGNORE_FILE := ".gdignore"
