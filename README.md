@@ -42,6 +42,36 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 
 **`unreliable_drop_rate` は既定 0 だが、出荷前に必ず 0 より大きくして試すこと。** WebSocket 中継では `unreliable` も落ちずに届くため、パケットが落ちる前提で書けているかを確認できる場所はエディタのモックだけになる。
 
+## GameRush 向けの書き出し（任意）
+
+`addons/grush_sdk_build/` は、GameRush 向けの推奨設定で Web 書き出しをするための別アドオン。使う場合は `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK Build** を **GameRush SDK とは別に**有効にする。Godot 4.3 以降と、Web 用の書き出しテンプレート（`Editor > Manage Export Templates`）が必要。
+
+`export_presets.cfg` に **「GameRush Web」** という名前のプリセットを作り、既にあれば推奨値へ書き戻す（ほかのプリセットには触れない）。スレッドは無効（GameRush の配信は COOP/COEP ヘッダを送らない）、スマホ向けテクスチャ圧縮（ETC2/ASTC）は既定で有効、`addons/grush_sdk_build/*` は書き出しから除外される。書き出し先がプロジェクト内なら、その親フォルダ（既定では `build/`）に `.gdignore` を置いて取り込み対象から外す（親フォルダにほかのファイルがあるときは置かずに警告する）。プロジェクト直下のフォルダには書き出せない。
+
+エディタでは `Project > Tools` の2項目から使う。
+
+| メニュー | 内容 |
+|---|---|
+| `GameRush: 書き出し設定を確認` | 「GameRush Web」の現在値と推奨値を並べて表示し、「推奨を適用」でプリセットだけを書き換える |
+| `GameRush: 推奨設定で書き出す` | 書き出し先を選び、プリセットを推奨値にしてから書き出し、サイズと警告を表示する |
+
+エクスポートダイアログを開いたまま使った場合は、閉じて開き直すと新しいプリセットが見える（エディタはプリセットをメモリに持っている）。書き出し中はエディタが固まったように見える。
+
+コマンドラインからも同じことができる（CI 向け）。
+
+```sh
+godot --headless --path . --script res://addons/grush_sdk_build/grush_build_cli.gd -- --output build/gamerush
+```
+
+`--no-mobile-textures` でスマホ向けテクスチャ圧縮を外し、`--preset-only` でプリセットだけ書いて書き出しを省く。出力は `[grush-build] ` で始まる行で、変更した設定は `set <key>: <旧> -> <新>` と出る。
+
+| 終了コード | 意味 |
+|---|---|
+| 0 | 成功（30MB を超えたときは警告だけ出る） |
+| 1 | 書き出し失敗（多くは書き出しテンプレートの未インストール） |
+| 2 | 引数・Godot のバージョン・書き出し先（プロジェクト直下、`addons/`、`.godot/`）が不正 |
+| 4 | GameRush のアップロード上限（2000 ファイル / 300MB）を超えた |
+
 ## サンプル
 
 `samples/` の `.gd` を、空のシーンのルート `Control` ノードへ付けるだけで動く（シーンファイルは持たない）。
