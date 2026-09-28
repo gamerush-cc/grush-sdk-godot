@@ -29,11 +29,9 @@ if joined["ok"]:
 ```gdscript
 if await GRush.share.is_available():
     var shared: Dictionary = await GRush.share.share_screen("ステージ3をクリア")
-    var image := get_viewport().get_texture().get_image()
-    var with_image: Dictionary = await GRush.share.share("記録更新", image)
 ```
 
-GameRush の確認シートが出て、プレイヤーが送り先を押したときに共有が開く。`value` は `{"status": "opened"}` か `{"status": "cancelled"}` だけ。`share` の画像は PNG にして base64 で渡す。`share_screen` はゲームの canvas のスクショを送る。本文は 100 文字までで、URL と @メンションを含むと `invalidParams`。古い GameRush（`protocolVersion` 3 未満）では `unsupported`。
+GameRush の確認シートが出て、プレイヤーが送り先を押したときに共有が開く。`value` は `{"status": "opened"}` か `{"status": "cancelled"}` だけ。`share` の画像は PNG にして base64 で渡す。`share_screen` はゲームの canvas のスクショを送る。自前の画像を送るなら `share(text, image)`（`Image`）。共有は 5 秒に 1 回までなので、1 回のボタン操作で呼ぶのはどちらか一方にする。共有したことを条件に報酬を出さない。本文は 100 文字までで、URL と @メンションを含むと `invalidParams`。古い GameRush（`protocolVersion` 3 未満）では `unsupported`。
 
 ## エディタでの動作確認
 
