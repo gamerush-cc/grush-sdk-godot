@@ -24,6 +24,17 @@ if joined["ok"]:
 
 すべての API は `{"ok": bool, "value": Variant, "code": String, "message": String}` を返し、例外を投げない。GameRush の外で動かした場合は `ok` が `false`、`code` が `"unsupported"` になるだけで、ゲームは止まらない。
 
+### 共有
+
+```gdscript
+if await GRush.share.is_available():
+    var shared: Dictionary = await GRush.share.share_screen("ステージ3をクリア")
+    var image := get_viewport().get_texture().get_image()
+    var with_image: Dictionary = await GRush.share.share("記録更新", image)
+```
+
+GameRush の確認シートが出て、プレイヤーが送り先を押したときに共有が開く。`value` は `{"status": "opened"}` か `{"status": "cancelled"}` だけ。`share` の画像は PNG にして base64 で渡す。`share_screen` はゲームの canvas のスクショを送る。本文は 100 文字までで、URL と @メンションを含むと `invalidParams`。古い GameRush（`protocolVersion` 3 未満）では `unsupported`。
+
 ## エディタでの動作確認
 
 Web 書き出し以外では `grush_backend_mock.gd` が使われる。`GRushMock` の static 変数で挙動を切り替える。
@@ -33,12 +44,15 @@ GRushMock.signed_in = true
 GRushMock.display_name = "Editor Player"
 GRushMock.grant_profile_consent = false
 GRushMock.unreliable_drop_rate = 0.1
+GRushMock.share_status = "cancelled"
 
 var opponent := GRush.mock_add_peer("Sparring Partner")
 opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply))
 ```
 
 `GRush.mock_add_peer` で作った相手は同じプロセス内の2人目の peer として部屋に入り、送受信が実際に往復する。
+
+共有のモックは確認シートを出さず、`GRushMock.share_status`（既定 `"opened"`）を返す。`GRushMock.share_available = false` で共有できない環境を試せる。本文と画像の検査はしない。
 
 **`unreliable_drop_rate` は既定 0 だが、出荷前に必ず 0 より大きくして試すこと。** WebSocket 中継では `unreliable` も落ちずに届くため、パケットが落ちる前提で書けているかを確認できる場所はエディタのモックだけになる。
 

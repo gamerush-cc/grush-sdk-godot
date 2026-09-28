@@ -14,12 +14,16 @@ const PlayerApi := preload("res://addons/grush_sdk/grush_player_api.gd")
 const NetApi := preload("res://addons/grush_sdk/grush_net_api.gd")
 const LeaderboardsApi := preload("res://addons/grush_sdk/grush_leaderboards_api.gd")
 const PlayerStateApi := preload("res://addons/grush_sdk/grush_player_state_api.gd")
+const ShareApi := preload("res://addons/grush_sdk/grush_share_api.gd")
+const ShareWeb := preload("res://addons/grush_sdk/grush_share_web.gd")
+const ShareMock := preload("res://addons/grush_sdk/grush_share_mock.gd")
 
 var backend: RefCounted
 var player: RefCounted
 var net: RefCounted
 var leaderboards: RefCounted
 var player_state: RefCounted
+var share: RefCounted
 
 
 func _ready() -> void:
@@ -37,6 +41,7 @@ func use_backend(replacement: RefCounted) -> void:
 	net = NetApi.new(self, backend)
 	leaderboards = LeaderboardsApi.new(self, backend)
 	player_state = PlayerStateApi.new(self, backend)
+	share = ShareApi.new(self, _share_transport(backend))
 
 
 func _dispose() -> void:
@@ -47,6 +52,7 @@ func _dispose() -> void:
 	net = null
 	leaderboards = null
 	player_state = null
+	share = null
 
 
 func is_available() -> bool:
@@ -74,3 +80,11 @@ func _create_backend() -> RefCounted:
 	if WebBackend.is_present():
 		return WebBackend.new()
 	return MockBackend.new()
+
+
+func _share_transport(active: RefCounted) -> RefCounted:
+	if active is WebBackend:
+		return ShareWeb.new()
+	if active is MockBackend:
+		return ShareMock.new()
+	return null

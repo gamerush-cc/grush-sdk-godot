@@ -25,7 +25,7 @@ func is_available() -> bool:
 
 
 func protocol_version() -> int:
-	return 2
+	return 3
 
 
 func set_net_event_handler(handler: Callable) -> void:
@@ -128,8 +128,6 @@ func _handle(method: String, params: Dictionary) -> Dictionary:
 var _mock_player_state: Variant = null
 
 
-## モックでも payload の形だけは実サーバと同じに縛る。エディタで通った
-## ものが実環境で 400 になると、作者は原因を掴めない。
 func _set_player_state(params: Dictionary) -> Dictionary:
 	var payload: Variant = params.get("payload", null)
 	if not (payload is Dictionary):
