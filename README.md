@@ -36,13 +36,13 @@ GameRush の確認シートが出て、プレイヤーが送り先を押した�
 ### 表示言語
 
 ```gdscript
+GRush.locale.changed.connect(func(next: Dictionary) -> void: print(next["locale"]))
 var fetched: Dictionary = await GRush.locale.fetch()
 if fetched["ok"]:
     print(fetched["value"]["locale"])
-GRush.locale.changed.connect(func(next: Dictionary) -> void: print(next["locale"]))
 ```
 
-GameRush 本体の表示言語を読む。`value` は `{"locale": "ja-JP", "source": "user", "languages": PackedStringArray}`。`source` は `"user"`（プレイヤーが選んだ）・`"system"`（アプリの端末設定）・`"device"`（ブラウザの言語）のどれか。`GRush.locale.current()` は取得済みなら同じ Dictionary、まだなら `null` を返す。表示言語が決まったとき・変わったときに `changed` が発火する（JS の呼び出しの中ではなく `call_deferred` で後から配る）。古い GameRush（`protocolVersion` 4 未満）では `fetch` が `unsupported`、`current` が `null`。
+GameRush 本体の表示言語を読む。`value` は `{"locale": "ja-JP", "source": "user", "languages": PackedStringArray}`。`source` は `"user"`（プレイヤーが選んだ）・`"system"`（アプリの端末設定）・`"device"`（ブラウザの言語）で、今後増えても動くように書く。`GRush.locale.current()` は取得済みなら同じ Dictionary、まだなら `null` を返す。表示言語が決まったとき・変わったときに `changed` が発火する（JS の呼び出しの中ではなく `call_deferred` で後から配るので、取得の途中の変更を取りこぼさないよう `fetch` より先に接続する）。古い GameRush（`protocolVersion` 4 未満）では `fetch` が `unsupported`、`current` が `null`。
 
 ## エディタでの動作確認
 

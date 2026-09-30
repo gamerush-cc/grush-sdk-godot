@@ -4,12 +4,14 @@ const Result := preload("res://addons/grush_sdk/grush_result.gd")
 
 
 func current() -> Variant:
+	var device := OS.get_locale().replace("_", "-")
 	var tag := GRushMock.locale
-	var source := "user"
 	if tag == "":
-		tag = OS.get_locale().replace("_", "-")
-		source = "device"
-	return {"locale": tag, "source": source, "languages": PackedStringArray([tag])}
+		return {"locale": device, "source": "device", "languages": PackedStringArray([device])}
+	var languages := PackedStringArray([tag])
+	if device != tag:
+		languages.append(device)
+	return {"locale": tag, "source": "user", "languages": languages}
 
 
 func fetch(on_done: Callable) -> void:
