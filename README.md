@@ -4,7 +4,7 @@ GameRush の GameAPI を Godot 4 から呼ぶアドオン。ビルドの書き�
 
 ## 導入
 
-`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
+[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.2.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
 
 書き出しは Web。それ以外のプラットフォームでは自動的にモックへ落ちる。
 
@@ -33,6 +33,17 @@ if await GRush.share.is_available():
 
 GameRush の確認シートが出て、プレイヤーが送り先を押したときに共有が開く。`value` は `{"status": "opened"}` か `{"status": "cancelled"}` だけ。`share` の画像は PNG にして base64 で渡す。`share_screen` はゲームの canvas のスクショを送る。自前の画像を送るなら `share(text, image)`（`Image`）。共有は 5 秒に 1 回までなので、1 回のボタン操作で呼ぶのはどちらか一方にする。共有したことを条件に報酬を出さない。本文は 100 文字までで、URL と @メンションを含むと `invalidParams`。古い GameRush（`protocolVersion` 3 未満）では `unsupported`。
 
+### 表示言語
+
+```gdscript
+var fetched: Dictionary = await GRush.locale.fetch()
+if fetched["ok"]:
+    print(fetched["value"]["locale"])
+GRush.locale.changed.connect(func(next: Dictionary) -> void: print(next["locale"]))
+```
+
+GameRush 本体の表示言語を読む。`value` は `{"locale": "ja-JP", "source": "user", "languages": PackedStringArray}`。`source` は `"user"`（プレイヤーが選んだ）・`"system"`（アプリの端末設定）・`"device"`（ブラウザの言語）のどれか。`GRush.locale.current()` は取得済みなら同じ Dictionary、まだなら `null` を返す。表示言語が決まったとき・変わったときに `changed` が発火する（JS の呼び出しの中ではなく `call_deferred` で後から配る）。古い GameRush（`protocolVersion` 4 未満）では `fetch` が `unsupported`、`current` が `null`。
+
 ## エディタでの動作確認
 
 Web 書き出し以外では `grush_backend_mock.gd` が使われる。`GRushMock` の static 変数で挙動を切り替える。
@@ -49,6 +60,8 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 ```
 
 `GRush.mock_add_peer` で作った相手は同じプロセス内の2人目の peer として部屋に入り、送受信が実際に往復する。
+
+表示言語のモックは `GRushMock.locale`（例 `"en-US"`、`source` は `"user"`）を返し、空なら `OS.get_locale()` を BCP47 に直して `source: "device"` で返す。
 
 共有のモックは確認シートを出さず、`GRushMock.share_status`（既定 `"opened"`）を返す。`GRushMock.share_available = false` で共有できない環境を試せる。本文と画像の検査はしない。
 

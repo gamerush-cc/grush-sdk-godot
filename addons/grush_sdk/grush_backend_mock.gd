@@ -25,7 +25,7 @@ func is_available() -> bool:
 
 
 func protocol_version() -> int:
-	return 3
+	return 4
 
 
 func set_net_event_handler(handler: Callable) -> void:
