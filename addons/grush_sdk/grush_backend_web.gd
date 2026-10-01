@@ -4,6 +4,9 @@ const Result := preload("res://addons/grush_sdk/grush_result.gd")
 
 var _room: JavaScriptObject = null
 var _room_callbacks: Array = []
+# JavaScriptBridge.create_callback の戻りは、参照を持たないと回収される。
+# 部屋のリスナは部屋が生きている間抱え、差し替えでは1世代ぶん遅れて解放する。
+# JS のコールバックの実行中に、そのコールバック自身を解放しないため。
 var _retired_callbacks: Array = []
 var _pending: Dictionary = {}
 var _next_token := 1
