@@ -134,7 +134,8 @@ func _set_player_state(params: Dictionary) -> Dictionary:
 		return Result.failure(
 			Result.CODE_INVALID_PARAMS, "Player state payload must be a JSON object."
 		)
-	if JSON.stringify(payload).length() > 4096:
+	# サーバと同じく、文字数ではなく UTF-8 のバイト数で数える。
+	if JSON.stringify(payload).to_utf8_buffer().size() > 4096:
 		return Result.failure(Result.CODE_INVALID_PARAMS, "Player state payload is too large.")
 	var revision := 1
 	if _mock_player_state is Dictionary:
