@@ -20,6 +20,9 @@ const ShareMock := preload("res://addons/grush_sdk/grush_share_mock.gd")
 const LocaleApi := preload("res://addons/grush_sdk/grush_locale_api.gd")
 const LocaleWeb := preload("res://addons/grush_sdk/grush_locale_web.gd")
 const LocaleMock := preload("res://addons/grush_sdk/grush_locale_mock.gd")
+const AnalyticsApi := preload("res://addons/grush_sdk/grush_analytics_api.gd")
+const AnalyticsWeb := preload("res://addons/grush_sdk/grush_analytics_web.gd")
+const AnalyticsMock := preload("res://addons/grush_sdk/grush_analytics_mock.gd")
 
 var backend: RefCounted
 var player: RefCounted
@@ -28,6 +31,8 @@ var leaderboards: RefCounted
 var player_state: RefCounted
 var share: RefCounted
 var locale: RefCounted
+## 作者のアナリティクスへ送るイベント。どれも同期で bool を返す。
+var analytics: RefCounted
 
 
 func _ready() -> void:
@@ -47,6 +52,7 @@ func use_backend(replacement: RefCounted) -> void:
 	player_state = PlayerStateApi.new(self, backend)
 	share = ShareApi.new(self, _share_transport(backend))
 	locale = LocaleApi.new(self, _locale_transport(backend))
+	analytics = AnalyticsApi.new(self, _analytics_transport(backend))
 
 
 func _dispose() -> void:
@@ -61,6 +67,7 @@ func _dispose() -> void:
 	player_state = null
 	share = null
 	locale = null
+	analytics = null
 
 
 func is_available() -> bool:
@@ -103,4 +110,13 @@ func _locale_transport(active: RefCounted) -> RefCounted:
 		return LocaleWeb.new()
 	if active is MockBackend:
 		return LocaleMock.new()
+	return null
+
+
+# Web の書き出しを GameRush の外で開いたときは、モックではなく送れない扱いにする（すべての呼び出しが false）。
+func _analytics_transport(active: RefCounted) -> RefCounted:
+	if active is WebBackend:
+		return AnalyticsWeb.new()
+	if active is MockBackend and not OS.has_feature("web"):
+		return AnalyticsMock.new()
 	return null
