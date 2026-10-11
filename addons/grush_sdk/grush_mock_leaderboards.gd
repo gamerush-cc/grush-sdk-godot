@@ -23,8 +23,10 @@ static var _manifest_read := false
 
 
 ## エディタで使うランキング枠を宣言する。実環境では Studio か grush.json が持つ役割。
-## 同じ key が grush.json にあっても、こちらの宣言を使う。[param period] は
-## [code]all_time[/code] / [code]daily[/code] / [code]weekly[/code] / [code]monthly[/code]。
+## [constant MANIFEST_PATH] を自動で読むときは、同じ key をこちらで宣言してあれば
+## こちらを使う。[method load_manifest] に渡した定義は、こちらの宣言を置き換える。
+## [param period] は [code]all_time[/code] / [code]daily[/code] / [code]weekly[/code] /
+## [code]monthly[/code]。
 ## [param enabled] が false の枠は、宣言していない key と同じく投稿と取得が
 ## [code]invalidParams[/code] になる。
 static func define(
@@ -56,7 +58,8 @@ static func define(
 
 ## grush.json の中身（JSON の文字列）で枠を宣言し、宣言した key の配列を結果の
 ## [code]value[/code] に入れて返す。アップロードと同じ規則で読み、誤りは
-## [code]invalidParams[/code] とアップロードと同じ文言で返す。これを呼ぶと、
+## [code]invalidParams[/code] とアップロードと同じ文言で返す。同じ key を
+## [method define] で宣言してあっても、こちらの定義で置き換える。これを呼ぶと、
 ## [constant MANIFEST_PATH] は自動では読まない。
 static func load_manifest(json_text: String) -> Dictionary:
 	_manifest_read = true
@@ -92,8 +95,9 @@ static func _ensure_manifest() -> void:
 	_manifest_read = true
 	if not FileAccess.file_exists(MANIFEST_PATH):
 		return
-	var text := FileAccess.get_file_as_string(MANIFEST_PATH)
-	var parsed := Manifest.parse(text)
+	# 文字列で読むと、UTF-8 でないバイト列も通り、上限も文字数で測ることになる。GameRush と同じく
+	# バイト列のまま確かめる。
+	var parsed := Manifest.parse_bytes(FileAccess.get_file_as_bytes(MANIFEST_PATH))
 	if parsed.has("error"):
 		push_warning("[GRushMock] %s" % parsed["error"])
 		return

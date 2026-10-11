@@ -26,10 +26,23 @@ func _export_begin(features: PackedStringArray, _is_debug: bool, path: String, _
 
 
 func _export_end() -> void:
-	if _target_dir == "" or not FileAccess.file_exists(MANIFEST_PATH):
+	if _target_dir == "":
+		return
+	var target := _target_dir.path_join(FILE_NAME)
+	if not FileAccess.file_exists(MANIFEST_PATH):
+		# 前回写したものが残ると、アップロードで Studio の定義を古い中身で書き換える。
+		if FileAccess.file_exists(target):
+			if DirAccess.remove_absolute(target) != OK:
+				push_error("[GRush] 書き出し先の古い %s を消せません: %s" % [FILE_NAME, target])
+				return
+			print(
+				(
+					"[GRush] %s が無いので、書き出し先の古い %s を消しました: %s"
+					% [MANIFEST_PATH, FILE_NAME, target]
+				)
+			)
 		return
 	var bytes := FileAccess.get_file_as_bytes(MANIFEST_PATH)
-	var target := _target_dir.path_join(FILE_NAME)
 	var file := FileAccess.open(target, FileAccess.WRITE)
 	if file == null:
 		push_error("[GRush] %s を書き出し先へ写せません: %s" % [FILE_NAME, target])
