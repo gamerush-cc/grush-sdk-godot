@@ -7,6 +7,9 @@ const Rules := preload("res://addons/grush_sdk/grush_analytics_rules.gd")
 
 const MAX_EVENTS := 200
 
+# GameRush と同じく、拒んだ理由ごとに1回だけ警告する。
+var _warned := {}
+
 
 func is_available() -> bool:
 	return true
@@ -15,7 +18,10 @@ func is_available() -> bool:
 func log_event(kind: String, params: Dictionary) -> bool:
 	var result := Rules.sanitize(kind, params)
 	if not result["ok"]:
-		push_warning("[GRushMock] analytics event rejected (%s)." % result["reason"])
+		var reason: String = result["reason"]
+		if not _warned.has(reason):
+			_warned[reason] = true
+			push_warning("[GRushMock] analytics event rejected (%s)." % reason)
 		return false
 	var event: Dictionary = result["event"]
 	GRushMock.analytics_events.append(event)

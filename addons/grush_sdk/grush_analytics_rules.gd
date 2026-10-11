@@ -54,12 +54,13 @@ static func sanitize(kind: String, params: Dictionary) -> Dictionary:
 			return _sanitize_economy(params, fields)
 
 
-## 1行のテキストに直す。長すぎるか文字列でなければ null、見えない文字だけなら空文字。
+## 1行のテキストに直す。長すぎるか String でなければ null（StringName も、GameRush へは文字列として届かないので拒む）、
+## 見えない文字だけなら空文字。
 static func line_text(value: Variant) -> Variant:
-	if not (value is String or value is StringName):
+	if not value is String:
 		return null
 	_compile()
-	var text := _line_breaking.sub(str(value), " ", true)
+	var text := _line_breaking.sub(value, " ", true)
 	text = _edges.sub(text, "", true)
 	if text.length() > MAX_TEXT_CODE_POINTS:
 		return null
@@ -183,9 +184,9 @@ static func _is_finite_number(value: Variant) -> bool:
 
 # 名前の鍵（英数字と ._:-）か、field のキー（英数字と _）。
 static func _is_key(value: Variant, max_length: int, field_key: bool) -> bool:
-	if not (value is String or value is StringName):
+	if not value is String:
 		return false
-	var text := str(value)
+	var text: String = value
 	if text.is_empty() or text.length() > max_length:
 		return false
 	for index in text.length():

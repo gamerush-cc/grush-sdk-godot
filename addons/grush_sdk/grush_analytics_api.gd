@@ -26,7 +26,7 @@ func _init(grush: Node, transport: RefCounted) -> void:
 	_transport = transport
 
 
-## GameRush の中で動いていて、分析イベントを送れるか。
+## GameRush の中で動いていて、分析イベントを送れるか。エディタと Web 以外の書き出しではモックが true を返す。
 func is_available() -> bool:
 	return _supported() and _transport.is_available()
 
