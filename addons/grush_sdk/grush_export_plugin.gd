@@ -30,16 +30,15 @@ func _export_end() -> void:
 		return
 	var target := _target_dir.path_join(FILE_NAME)
 	if not FileAccess.file_exists(MANIFEST_PATH):
-		# 前回写したものが残ると、アップロードで Studio の定義を古い中身で書き換える。
+		# 書き出し先のファイルは、前回写したものかもしれず、作者が手で置いたものかもしれない。
+		# 見分けられないので消さない。残ったままアップロードすると、その中身で Studio の定義を書き換える。
 		if FileAccess.file_exists(target):
-			if DirAccess.remove_absolute(target) != OK:
-				push_error("[GRush] 書き出し先の古い %s を消せません: %s" % [FILE_NAME, target])
-				return
-			print(
+			push_warning(
 				(
-					"[GRush] %s が無いので、書き出し先の古い %s を消しました: %s"
-					% [MANIFEST_PATH, FILE_NAME, target]
+					"[GRush] %s が無いのに、書き出し先に %s があります。このままアップロードすると、"
+					+ "その中身でランキングの定義を書き換えます。要らなければ消してください: %s"
 				)
+				% [MANIFEST_PATH, FILE_NAME, target]
 			)
 		return
 	var bytes := FileAccess.get_file_as_bytes(MANIFEST_PATH)

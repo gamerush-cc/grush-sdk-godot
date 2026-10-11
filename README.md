@@ -72,9 +72,9 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 ランキングの定義は、プロジェクトの直下の `res://grush.json` に書ける。書式は [SDK ガイドのランキング](https://gamerush.jp/sdk#leaderboards)。
 
 - モックは、最初のランキングの呼び出しの前にこのファイルを読み、その枠を宣言する。ファイルが無ければ何もしない。書式の誤りはアップロードと同じ文言で警告し、その中身は使わない
-- Web で書き出すと、このファイルが `index.html` の隣へ写る（アドオンの書き出しプラグインが写す。エクスポートダイアログ・`--export-release`・下の GameRush SDK Build のどれでも写る）。ファイルが無いときは、前回写した `grush.json` を書き出し先から消す。GameRush はアップロードされたビルドの最上位の `grush.json` だけを読む
+- Web で書き出すと、このファイルが `index.html` の隣へ写る（アドオンの書き出しプラグインが写す。エクスポートダイアログ・`--export-release`・下の GameRush SDK Build のどれでも写る）。ファイルが無いのに書き出し先に `grush.json` が残っていれば、消さずに警告を出す（残ったままアップロードすると、その中身で定義を書き換える）。GameRush はアップロードされたビルドの最上位の `grush.json` だけを読む
 - ファイルを自動で読むときは、`GRushMockLeaderboards.define` で同じ key を宣言してあればそちらを使う。`GRushMockLeaderboards.load_manifest(json_text)` に渡した定義は、`define` の宣言を置き換える。`load_manifest` を呼ぶと、ファイルは自動では読まない。`load_manifest` は誤りを `invalidParams` で返す
-- `enabled: false` の枠は一覧に出ず、投稿と取得は宣言していない key と同じく `invalidParams` になる。`minValue` / `maxValue` の無い枠は、GameRush と同じく投稿を受けない
+- `enabled: false` の枠は一覧に出ず、投稿と取得は宣言していない key と同じく `invalidParams` になる。grush.json で `minValue` / `maxValue` を書かなかった枠は、GameRush と同じく投稿を受けない
 - `period` が `daily` / `weekly` / `monthly` の枠は、GameRush と同じ期間キー（UTC）を返し、期間が変わると空からやり直す
 - `GRushMockLeaderboards.reset()` の後は、次のランキングの呼び出しでファイルを読み直す
 

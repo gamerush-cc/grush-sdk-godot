@@ -71,10 +71,10 @@ static func load_manifest(json_text: String) -> Dictionary:
 
 static func _apply(entries: Array, keep_defined: bool) -> Array:
 	var defined: Array = []
-	for entry: Dictionary in entries:
+	for entry in entries:
 		if keep_defined and _boards.has(entry["key"]):
 			continue
-		var board := entry.duplicate()
+		var board: Dictionary = entry.duplicate()
 		# GameRush は値域の無い枠への投稿を受けないので、grush.json の枠はそれに合わせる。
 		board["require_range"] = true
 		_put(board)
