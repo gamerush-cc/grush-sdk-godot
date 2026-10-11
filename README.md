@@ -67,6 +67,17 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 
 **`unreliable_drop_rate` は既定 0 だが、出荷前に必ず 0 より大きくして試すこと。** WebSocket 中継では `unreliable` も落ちずに届くため、パケットが落ちる前提で書けているかを確認できる場所はエディタのモックだけになる。
 
+### grush.json をモックで使う
+
+ランキングの定義は、プロジェクトの直下の `res://grush.json` に書ける。書式は [SDK ガイドのランキング](https://gamerush.jp/sdk#leaderboards)。
+
+- モックは、最初のランキングの呼び出しの前にこのファイルを読み、その枠を宣言する。ファイルが無ければ何もしない。書式の誤りはアップロードと同じ文言で警告し、その中身は使わない
+- Web で書き出すと、このファイルが `index.html` の隣へ写る（アドオンの書き出しプラグインが写す。エクスポートダイアログ・`--export-release`・下の GameRush SDK Build のどれでも写る）。GameRush はアップロードされたビルドの最上位の `grush.json` だけを読む
+- `GRushMockLeaderboards.define` で同じ key を宣言してあれば、そちらを使う。`GRushMockLeaderboards.load_manifest(json_text)` に中身を渡すと、ファイルは自動では読まない。`load_manifest` は誤りを `invalidParams` で返す
+- `enabled: false` の枠は一覧に出ず、投稿と取得は宣言していない key と同じく `invalidParams` になる。`minValue` / `maxValue` の無い枠は、GameRush と同じく投稿を受けない
+- `period` が `daily` / `weekly` / `monthly` の枠は、GameRush と同じ期間キー（UTC）を返し、期間が変わると空からやり直す
+- `GRushMockLeaderboards.reset()` の後は、次のランキングの呼び出しでファイルを読み直す
+
 ## GameRush 向けの書き出し（任意）
 
 `addons/grush_sdk_build/` は、GameRush 向けの推奨設定で Web 書き出しをするための別アドオン。使う場合は `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK Build** を **GameRush SDK とは別に**有効にする。Godot 4.3 以降と、Web 用の書き出しテンプレート（`Editor > Manage Export Templates`）が必要。
