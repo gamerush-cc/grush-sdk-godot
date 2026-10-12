@@ -20,6 +20,8 @@ const ShareMock := preload("res://addons/grush_sdk/grush_share_mock.gd")
 const LocaleApi := preload("res://addons/grush_sdk/grush_locale_api.gd")
 const LocaleWeb := preload("res://addons/grush_sdk/grush_locale_web.gd")
 const LocaleMock := preload("res://addons/grush_sdk/grush_locale_mock.gd")
+const InboxApi := preload("res://addons/grush_sdk/grush_inbox_api.gd")
+const TradeApi := preload("res://addons/grush_sdk/grush_trade_api.gd")
 
 var backend: RefCounted
 var player: RefCounted
@@ -28,6 +30,10 @@ var leaderboards: RefCounted
 var player_state: RefCounted
 var share: RefCounted
 var locale: RefCounted
+## 受信箱。同じゲームのプレイヤーへ小さい構造化メッセージを送り、受け取る。
+var inbox: RefCounted
+## 交換所。アイテムを出品し、同じゲームの別のプレイヤーが受ける。
+var trade: RefCounted
 
 
 func _ready() -> void:
@@ -47,6 +53,8 @@ func use_backend(replacement: RefCounted) -> void:
 	player_state = PlayerStateApi.new(self, backend)
 	share = ShareApi.new(self, _share_transport(backend))
 	locale = LocaleApi.new(self, _locale_transport(backend))
+	inbox = InboxApi.new(self, backend)
+	trade = TradeApi.new(self, backend)
 
 
 func _dispose() -> void:
@@ -61,6 +69,8 @@ func _dispose() -> void:
 	player_state = null
 	share = null
 	locale = null
+	inbox = null
+	trade = null
 
 
 func is_available() -> bool:
