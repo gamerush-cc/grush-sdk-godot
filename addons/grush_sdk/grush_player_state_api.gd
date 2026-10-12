@@ -41,12 +41,16 @@ func get_mine() -> Dictionary:
 ## 更新されていた場合は invalidParams（409 相当）で戻る。
 ## [param options] の `rating` は相手探しに使う数値（-1e9 より大きく 1e9 より小さい）で、
 ## null を渡すと消し、渡さなければ今の値のまま。版数が [constant MATCHMAKING_PROTOCOL_VERSION]
-## 未満のランタイムでは rating を送らず、payload だけを書く。
+## 未満のランタイムでは rating を送らず、payload だけを書く。それ以上でも古い GameRush 本体では
+## rating が黙って捨てられるので、書けたかは返る状態の `rating` で確かめる。
+## NaN と無限大は送らずに invalidParams で返す。
 func set_mine(payload: Dictionary, base_revision: Variant = null, options: Dictionary = {}) -> Dictionary:
 	var params := {"payload": payload}
 	if base_revision != null:
 		params["baseRevision"] = int(base_revision)
 	if options.has("rating") and _grush.protocol_version() >= MATCHMAKING_PROTOCOL_VERSION:
+		if options["rating"] != null and not _is_finite_number(options["rating"]):
+			return Result.failure(Result.CODE_INVALID_PARAMS, "rating must be a finite number or null.")
 		params["rating"] = options["rating"]
 	var response := await _call("playerState.setMine", params)
 	if not response["ok"]:
@@ -82,6 +86,11 @@ func sample(options: Dictionary = {}) -> Dictionary:
 	var params := {}
 	if options.has("count"):
 		params["count"] = int(options["count"])
+	for key in ["min_rating", "max_rating"]:
+		if options.has(key) and options[key] != null and not _is_finite_number(options[key]):
+			return Result.failure(
+				Result.CODE_INVALID_PARAMS, "min_rating and max_rating must be finite numbers."
+			)
 	if options.has("min_rating"):
 		params["minRating"] = options["min_rating"]
 	if options.has("max_rating"):
@@ -131,3 +140,13 @@ static func _state_of(raw: Variant) -> Dictionary:
 		"rating": float(rating) if rating is int or rating is float else null,
 		"updated_at": str(source.get("updatedAt", "")),
 	}
+
+
+# NaN と無限大は JSON の数値に書けない。Web の層は JSON を通して渡すので、そのまま送ると壊れた値が届き、
+# rating と分からない文言で返る。
+static func _is_finite_number(value: Variant) -> bool:
+	if value is int:
+		return true
+	if value is float:
+		return not is_nan(value) and not is_inf(value)
+	return false
