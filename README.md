@@ -22,7 +22,7 @@ if joined["ok"]:
     room.send(payload, GRush.CHANNEL_UNRELIABLE, GRush.EVERYONE)
 ```
 
-すべての API は `{"ok": bool, "value": Variant, "code": String, "message": String}` を返し、例外を投げない。GameRush の外で動かした場合は `ok` が `false`、`code` が `"unsupported"` になるだけで、ゲームは止まらない。
+すべての API は `{"ok": bool, "value": Variant, "code": String, "message": String}` を返し、例外を投げない（アナリティクスは `bool` を返す。下記）。GameRush の外で動かした場合は `ok` が `false`、`code` が `"unsupported"` になるだけで、ゲームは止まらない。
 
 ### 共有
 
@@ -31,7 +31,7 @@ if await GRush.share.is_available():
     var shared: Dictionary = await GRush.share.share_screen("ステージ3をクリア")
 ```
 
-GameRush の確認シートが出て、プレイヤーが送り先を押したときに共有が開く。`value` は `{"status": "opened"}` か `{"status": "cancelled"}` だけ。`share` の画像は PNG にして base64 で渡す。`share_screen` はゲームの canvas のスクショを送る。自前の画像を送るなら `share(text, image)`（`Image`）。共有は 5 秒に 1 回までなので、1 回のボタン操作で呼ぶのはどちらか一方にする。共有したことを条件に報酬を出さない。本文は 100 文字までで、URL と @メンションを含むと `invalidParams`。古い GameRush（`protocolVersion` 3 未満）では `unsupported`。
+GameRush の確認シートが出て、プレイヤーが送り先を押したときに共有が開く。`value` は `{"status": "opened"}` か `{"status": "cancelled"}` だけ。`share` の画像は PNG にして base64 で渡す。`share_screen` はゲームの canvas のスクショを送る。自前の画像を送るなら `share(text, image)`（`Image`）。共有は 5 秒に 1 回までなので、1 回のボタン操作で呼ぶのはどちらか一方にする。共有したことを条件に報酬を出さない。本文は 100 文字までで、URL と @メンションを含むと `invalidParams`。古い GameRush（`protocol_version` 3 未満）では `unsupported`。
 
 ### 表示言語
 
@@ -42,7 +42,34 @@ if fetched["ok"]:
     print(fetched["value"]["locale"])
 ```
 
-GameRush 本体の表示言語を読む。`value` は `{"locale": "ja-JP", "source": "user", "languages": PackedStringArray}`。`source` は `"user"`（プレイヤーが選んだ）・`"system"`（アプリの端末設定）・`"device"`（ブラウザの言語）で、今後増えても動くように書く。`GRush.locale.current()` は取得済みなら同じ Dictionary、まだなら `null` を返す。表示言語が決まったとき・変わったときに `changed` が発火する（JS の呼び出しの中ではなく `call_deferred` で後から配るので、取得の途中の変更を取りこぼさないよう `fetch` より先に接続する）。古い GameRush（`protocolVersion` 4 未満）では `fetch` が `unsupported`、`current` が `null`。
+GameRush 本体の表示言語を読む。`value` は `{"locale": "ja-JP", "source": "user", "languages": PackedStringArray}`。`source` は `"user"`（プレイヤーが選んだ）・`"system"`（アプリの端末設定）・`"device"`（ブラウザの言語）で、今後増えても動くように書く。`GRush.locale.current()` は取得済みなら同じ Dictionary、まだなら `null` を返す。表示言語が決まったとき・変わったときに `changed` が発火する（JS の呼び出しの中ではなく `call_deferred` で後から配るので、取得の途中の変更を取りこぼさないよう `fetch` より先に接続する）。古い GameRush（`protocol_version` 4 未満）では `fetch` が `unsupported`、`current` が `null`。
+
+### アナリティクス
+
+```gdscript
+GRush.analytics.log_onboarding_step(1, "tutorial_start")
+GRush.analytics.log_funnel_step("shop", "visit-1", 2, "item_selected", {"tab": "weapons"})
+GRush.analytics.log_custom_event("boss_defeated", 1, {"stage": "3"})
+GRush.analytics.log_economy_event(
+	GRush.AnalyticsApi.FLOW_SINK, "coin", 50, 120, GRush.AnalyticsApi.TRANSACTION_SHOP, "sword"
+)
+```
+
+作者のアナリティクスへ、オンボーディングとファネルのステップ・カスタムイベント・通貨の入手と消費を送る。
+
+- **ほかの API と違い、どれも同期で `bool` を返す。** `await` せずにどこからでも呼べる。`true` は GameRush へ渡したことで、保存されたことではない
+- 形が不正なとき（下の制限）は `false`。古い GameRush（`protocol_version` 6 未満）と GameRush の外では `false`。`GRush.analytics.is_available()` は GameRush の中で送れるかを返す（エディタと Web 以外の書き出しではモックが `true` を返す）
+- `step` は 1〜100。`value` は省略で 1、絶対値 1e9 まで。`amount` は正の値で 1e12 まで、`ending_balance`（その後の残高）は絶対値 1e15 まで
+- `flow_type` は `"source"`（入手）か `"sink"`（消費）。`transaction_type` の標準の値は `TRANSACTION_*` の定数（`TimedReward`・`Onboarding`・`Shop`・`Gameplay`・`ContextualPurchase`）で、ほかの値も受ける
+- イベント名・ファネル名・`funnel_session_id` は英数字と `._:-` で 64 文字まで、通貨と `transaction_type` は 32 文字まで。`funnel_session_id`・`step_name`・`item_sku` は空文字で省略できる
+- `step_name`・`item_sku`・`fields` の値は1行のテキストに直してから受ける。改行・制御文字・双方向の上書きと isolate は空白に直し、前後の空白を落としてから 40 文字まで数える。直した結果が空（空白や見えない文字だけ）の `step_name` と `item_sku` は省略と同じに扱い、`fields` の値は拒む。`fields` は String から String への Dictionary で3つまで（値が StringName などの String 以外なら拒む）、キーは英数字と `_` で 32 文字まで
+- オンボーディングとファネルの同じステップは、1セッションで最初の1回だけが残る。セッションはページを読み直しても続く。同じファネルを何度も通るなら、通るたびに別の `funnel_session_id` を渡す
+- 名前・値・`fields` に、プレイヤーを識別できる情報を入れない
+- GameRush の中でも、ゲームが前面に出るまでの分は溜めてから送る。溜められるのは 30 件までで、超えた分は `false`
+- `true` を返しても、次の分は保存されない
+  - 前面に出た後に GameRush 本体が掛ける上限を超えた分。本体は 500ms に1件、まとめて最大 30 件まで受け、送る前の列は合計 200 件まで
+  - セッションあたりの保存の上限を超えた分。オンボーディングを含むファネルのステップ 200 件・カスタムイベント 500 件・エコノミー 500 件
+  - 送れなかった分（送り直さない）
 
 ## エディタでの動作確認
 
@@ -64,6 +91,8 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 表示言語のモックは `GRushMock.locale`（例 `"en-US"`、`source` は `"user"`）を返し、空なら `OS.get_locale()` を BCP47 に直して `source: "device"` で返す。
 
 共有のモックは確認シートを出さず、`GRushMock.share_status`（既定 `"opened"`）を返す。`GRushMock.share_available = false` で共有できない環境を試せる。本文と画像の検査はしない。
+
+アナリティクスのモックは、GameRush と同じ検査をして、通ったイベントを1件ずつ出力し、直近の 200 件を `GRushMock.analytics_events`（GameRush へ渡すのと同じ形の Dictionary の配列）に持つ。弾いたイベントは、GameRush と同じく理由ごとに1回だけ警告する。前面に出るまでの 30 件の溜め・本体の上限・同じステップを最初の1回だけ残す扱い・セッションあたりの上限は再現しないので、モックでは `true` の分がすべて記録に残る。どこへも送らない。モックが名乗る `protocol_version` は 6。モックを使うのは Web 以外の書き出しとエディタだけで、Web の書き出しを GameRush の外で開いたときは、どの呼び出しも `false` になる。
 
 **`unreliable_drop_rate` は既定 0 だが、出荷前に必ず 0 より大きくして試すこと。** WebSocket 中継では `unreliable` も落ちずに届くため、パケットが落ちる前提で書けているかを確認できる場所はエディタのモックだけになる。
 

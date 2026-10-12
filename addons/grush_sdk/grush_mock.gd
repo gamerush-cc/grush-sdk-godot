@@ -12,3 +12,6 @@ static var max_peers := 8
 static var share_available := true
 static var share_status := "opened"
 static var locale := ""
+## モックが受けた分析イベント。GameRush へ渡すのと同じ形の Dictionary で、直近の 200 件を古い順に持つ。
+## 空にするときは clear() する。
+static var analytics_events: Array[Dictionary] = []
