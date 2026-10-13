@@ -75,6 +75,8 @@ func _invoke(method: String, params: Dictionary) -> Variant:
 	var net := JavaScriptBridge.get_interface("GRushNet")
 	var boards := JavaScriptBridge.get_interface("GRushLeaderboards")
 	var states := JavaScriptBridge.get_interface("GRushPlayerState")
+	var inbox := JavaScriptBridge.get_interface("GRushInbox")
+	var trade := JavaScriptBridge.get_interface("GRushTrade")
 	match method:
 		"player.getSelf":
 			return player.getSelf() if player != null else null
@@ -116,6 +118,13 @@ func _invoke(method: String, params: Dictionary) -> Variant:
 		"playerState.setMine":
 			if states == null:
 				return null
+			# rating は、それを読めるランタイムのときだけ params にある（grush_player_state_api.gd）。
+			if params.has("rating"):
+				return states.setMine(
+					_js_value(params.get("payload", {})),
+					params.get("baseRevision"),
+					_js_value({"rating": params["rating"]})
+				)
 			return states.setMine(
 				_js_value(params.get("payload", {})), params.get("baseRevision")
 			)
@@ -126,6 +135,38 @@ func _invoke(method: String, params: Dictionary) -> Variant:
 			return shim.playerStateGet(_js_value(params.get("pseudoIds", [])))
 		"playerState.report":
 			return states.report(params.get("pseudoId", "")) if states != null else null
+		"playerState.sample":
+			return states.sample(_js_value(params)) if states != null else null
+		"inbox.send":
+			if inbox == null:
+				return null
+			return inbox.send(
+				params.get("to", ""), params.get("kind", ""), _js_value(params.get("payload", {}))
+			)
+		"inbox.list":
+			return inbox.list(_js_value(params)) if inbox != null else null
+		"inbox.markRead":
+			return inbox.markRead(_js_value(params.get("ids", []))) if inbox != null else null
+		"inbox.remove":
+			return inbox.remove(_js_value(params.get("ids", []))) if inbox != null else null
+		"inbox.report":
+			return inbox.report(params.get("messageId", "")) if inbox != null else null
+		"trade.create":
+			return trade.create(_js_value(params)) if trade != null else null
+		"trade.list":
+			return trade.list(_js_value(params)) if trade != null else null
+		"trade.mine":
+			return trade.mine() if trade != null else null
+		"trade.accept":
+			if trade == null:
+				return null
+			return trade.accept(params.get("tradeId", ""), _js_value(params.get("give", {})))
+		"trade.cancel":
+			return trade.cancel(params.get("tradeId", "")) if trade != null else null
+		"trade.ack":
+			return trade.ack(_js_value(params.get("ids", []))) if trade != null else null
+		"trade.report":
+			return trade.report(params.get("tradeId", "")) if trade != null else null
 	return null
 
 
@@ -199,7 +240,28 @@ func _value_of(method: String, value: Variant) -> Variant:
 			return {"states": states if states is Array else []}
 		"playerState.report":
 			return {"reported": bool(value) if value != null else false}
+		"playerState.sample":
+			return _envelope(_gd_value(value), "states")
+		"inbox.send":
+			return _envelope(_gd_value(value), "sent")
+		"inbox.markRead", "inbox.remove":
+			return _envelope(_gd_value(value), "updated")
+		"inbox.report", "trade.report":
+			return _envelope(_gd_value(value), "reported")
+		"trade.create", "trade.cancel":
+			return _envelope(_gd_value(value), "trade")
+		"trade.ack":
+			return _envelope(_gd_value(value), "acked")
+		"inbox.list", "trade.list", "trade.mine", "trade.accept":
+			return _gd_value(value)
 	return null
+
+
+# ランタイムは包んだ RPC の結果（{"states": …}）も、中身だけも返しうる。どちらも包んだ形にそろえる。
+static func _envelope(value: Variant, key: String) -> Dictionary:
+	if value is Dictionary and value.has(key):
+		return value
+	return {key: value}
 
 
 func _bind_room(room: Variant) -> Variant:
