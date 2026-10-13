@@ -50,15 +50,29 @@ static func snapshot_of(value: Variant) -> Variant:
 	var json := JavaScriptBridge.get_interface("JSON")
 	if value == null or json == null:
 		return null
-	var parsed: Variant = JSON.parse_string(str(json.stringify(value)))
-	if not (parsed is Dictionary) or str(parsed.get("locale", "")) == "":
+	return snapshot_from(JSON.parse_string(str(json.stringify(value))))
+
+
+# JSON から読んだ値を、JavaScript の SDK と同じ既定でそろえる。
+# source が無ければ "device"、languages は空でない文字列だけを残し、空なら [locale]。
+static func snapshot_from(parsed: Variant) -> Variant:
+	if not (parsed is Dictionary):
 		return null
+	var tag: Variant = parsed.get("locale")
+	if not (tag is String) or tag == "":
+		return null
+	var source: Variant = parsed.get("source")
+	if not (source is String) or source == "":
+		source = "device"
 	var languages := PackedStringArray()
 	var raw: Variant = parsed.get("languages")
 	if raw is Array:
-		for tag in raw:
-			languages.append(str(tag))
-	return {"locale": str(parsed["locale"]), "source": str(parsed.get("source", "")), "languages": languages}
+		for language in raw:
+			if language is String and language != "":
+				languages.append(language)
+	if languages.is_empty():
+		languages.append(tag)
+	return {"locale": tag, "source": source, "languages": languages}
 
 
 static func _shim() -> JavaScriptObject:

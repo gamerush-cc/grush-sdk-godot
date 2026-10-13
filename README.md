@@ -4,7 +4,7 @@ GameRush の GameAPI を Godot 4 から呼ぶアドオン。ビルドの書き�
 
 ## 導入
 
-[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.7.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
+[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.8.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
 
 書き出しは Web。それ以外のプラットフォームでは自動的にモックへ落ちる。
 
@@ -102,7 +102,7 @@ if fetched["ok"]:
     print(fetched["value"]["locale"])
 ```
 
-GameRush 本体の表示言語を読む。`value` は `{"locale": "ja-JP", "source": "user", "languages": PackedStringArray}`。`source` は `"user"`（プレイヤーが選んだ）・`"system"`（アプリの端末設定）・`"device"`（ブラウザの言語）で、今後増えても動くように書く。`GRush.locale.current()` は取得済みなら同じ Dictionary、まだなら `null` を返す。表示言語が決まったとき・変わったときに `changed` が発火する（JS の呼び出しの中ではなく `call_deferred` で後から配るので、取得の途中の変更を取りこぼさないよう `fetch` より先に接続する）。古い GameRush（`protocol_version` 4 未満）では `fetch` が `unsupported`、`current` が `null`。
+GameRush 本体の表示言語を読む。`value` は `{"locale": "ja-JP", "source": "user", "languages": PackedStringArray}`。`source` は `"user"`（プレイヤーが選んだ）・`"system"`（アプリの端末設定）・`"device"`（ブラウザの言語）で、今後増えても動くように書く。`GRush.locale.current()` は取得済みなら同じ Dictionary、まだなら `null` を返す。表示言語が決まったとき・変わったときに `changed` が発火する（JS の呼び出しの中ではなく `call_deferred` で後から配るので、取得の途中の変更を取りこぼさないよう `fetch` より先に接続する）。古い GameRush（`protocol_version` 4 未満）では `fetch` が `unsupported`、`current` が `null`。`source` は必ず入り、GameRush が渡さなければ `"device"`。`languages` は空にならず、GameRush が空の一覧を渡せば `[locale]`。`GRush.use_backend` でバックエンドを差し替えても `GRush.locale` は同じインスタンスのままで、`changed` への接続は新しいバックエンドの通知を受け続ける。
 
 ### 起動パラメータ
 
@@ -166,7 +166,7 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 
 `GRush.mock_raise_room_error(code, message)` は、自分がいる部屋に `error_received` を届ける（次のフレーム以降に届き、部屋は閉じない）。部屋にいなければ `false` を返す。
 
-表示言語のモックは `GRushMock.locale`（例 `"en-US"`、`source` は `"user"`）を返し、空なら `OS.get_locale()` を BCP47 に直して `source: "device"` で返す。
+表示言語のモックは `GRushMock.locale`（例 `"en-US"`、`source` は `"user"`）を返し、空なら `OS.get_locale()` を BCP47 に直して `source: "device"` で返す。モックは `changed` を発火しない。
 
 起動パラメータのモックは `GRushMock.launch_params`（既定 `{}`。例 `GRushMock.launch_params = {"item": "sword"}`）をそのまま返す。GameRush の制限では確かめない。
 

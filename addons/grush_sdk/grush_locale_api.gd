@@ -10,13 +10,25 @@ signal changed(info: Dictionary)
 var _grush: Node
 var _transport: RefCounted
 var _disposed := false
+# use_transport のたびに増やす。差し替える前の受け取り口から call_deferred で積まれた通知を捨てるため。
+var _generation := 0
 
 
 func _init(grush: Node, transport: RefCounted) -> void:
 	_grush = grush
+	use_transport(transport)
+
+
+## 言語の値の受け取り口を差し替える。changed への接続はそのまま、新しい受け取り口の通知が届く。
+## GRush.use_backend が呼ぶ。
+func use_transport(transport: RefCounted) -> void:
+	if _transport != null:
+		_transport.dispose()
 	_transport = transport
+	_generation += 1
+	var generation := _generation
 	if _supported():
-		_transport.watch(func(info: Dictionary) -> void: _on_changed(info))
+		_transport.watch(func(info: Dictionary) -> void: _on_changed(generation, info))
 
 
 func fetch() -> Dictionary:
@@ -41,12 +53,12 @@ func dispose() -> void:
 	_grush = null
 
 
-func _on_changed(info: Dictionary) -> void:
-	_emit_changed.call_deferred(info)
+func _on_changed(generation: int, info: Dictionary) -> void:
+	_emit_changed.call_deferred(generation, info)
 
 
-func _emit_changed(info: Dictionary) -> void:
-	if not _disposed:
+func _emit_changed(generation: int, info: Dictionary) -> void:
+	if not _disposed and generation == _generation:
 		changed.emit(info)
 
 

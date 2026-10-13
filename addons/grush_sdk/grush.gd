@@ -53,8 +53,13 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_dispose()
+	if locale != null:
+		locale.dispose()
+	locale = null
 
 
+## バックエンドを差し替える。null なら実行環境に合うものを作り直す。
+## locale は作り直さないので、changed への接続は新しいバックエンドの通知を受け続ける。
 func use_backend(replacement: RefCounted) -> void:
 	_dispose()
 	backend = replacement if replacement != null else _create_backend()
@@ -63,7 +68,10 @@ func use_backend(replacement: RefCounted) -> void:
 	leaderboards = LeaderboardsApi.new(self, backend)
 	player_state = PlayerStateApi.new(self, backend)
 	share = ShareApi.new(self, _share_transport(backend))
-	locale = LocaleApi.new(self, _locale_transport(backend))
+	if locale == null:
+		locale = LocaleApi.new(self, _locale_transport(backend))
+	else:
+		locale.use_transport(_locale_transport(backend))
 	launch = LaunchApi.new(self, _launch_transport(backend))
 	analytics = AnalyticsApi.new(self, _analytics_transport(backend))
 	inbox = InboxApi.new(self, backend)
@@ -73,8 +81,6 @@ func use_backend(replacement: RefCounted) -> void:
 func _dispose() -> void:
 	if net != null:
 		net.dispose()
-	if locale != null:
-		locale.dispose()
 	if launch != null:
 		launch.dispose()
 	backend = null
@@ -83,7 +89,6 @@ func _dispose() -> void:
 	leaderboards = null
 	player_state = null
 	share = null
-	locale = null
 	launch = null
 	analytics = null
 	inbox = null
