@@ -3,8 +3,10 @@ extends RefCounted
 const Result := preload("res://addons/grush_sdk/grush_result.gd")
 const MockPeer := preload("res://addons/grush_sdk/grush_mock_peer.gd")
 
-const STATE_PATH := "user://grush_sdk_mock.cfg"
-const STATE_SECTION := "mock"
+const STATE_PATH := GRushMock.STATE_PATH
+const STATE_SECTION := GRushMock.STATE_SECTION
+# モックが実装している一番新しい機能（相手探し・受信箱・交換所）の版数。
+const MOCK_PROTOCOL_VERSION := 7
 
 var _members: Array = []
 var _outgoing_seq: Dictionary = {}
@@ -25,7 +27,7 @@ func is_available() -> bool:
 
 
 func protocol_version() -> int:
-	return 6
+	return MOCK_PROTOCOL_VERSION
 
 
 func set_net_event_handler(handler: Callable) -> void:
@@ -120,6 +122,32 @@ func _handle(method: String, params: Dictionary) -> Dictionary:
 			return Result.ok({"states": GRushMockPlayerStates.get_many(params.get("pseudoIds", []))})
 		"playerState.report":
 			return Result.ok({"reported": GRushMock.confirm_player_state_report})
+		"playerState.sample":
+			return GRushMockPlayerStates.sample(params, _local_pseudo_id())
+		"inbox.send":
+			return GRushMockInbox.handle_send(params, _local_pseudo_id())
+		"inbox.list":
+			return GRushMockInbox.handle_list(params)
+		"inbox.markRead":
+			return GRushMockInbox.handle_mark_read(params)
+		"inbox.remove":
+			return GRushMockInbox.handle_remove(params)
+		"inbox.report":
+			return GRushMockInbox.handle_report(params)
+		"trade.create":
+			return GRushMockTrades.handle_create(params, _local_pseudo_id())
+		"trade.list":
+			return GRushMockTrades.handle_list(params, _local_pseudo_id())
+		"trade.mine":
+			return GRushMockTrades.handle_mine(_local_pseudo_id())
+		"trade.accept":
+			return GRushMockTrades.handle_accept(params, _local_pseudo_id())
+		"trade.cancel":
+			return GRushMockTrades.handle_cancel(params, _local_pseudo_id())
+		"trade.ack":
+			return GRushMockTrades.handle_ack(params, _local_pseudo_id())
+		"trade.report":
+			return GRushMockTrades.handle_report(params, _local_pseudo_id())
 	return Result.failure(
 		Result.CODE_UNSUPPORTED, "The mock backend does not implement %s." % method
 	)
@@ -137,6 +165,12 @@ func _set_player_state(params: Dictionary) -> Dictionary:
 	# サーバと同じく、文字数ではなく UTF-8 のバイト数で数える。
 	if JSON.stringify(payload).to_utf8_buffer().size() > 4096:
 		return Result.failure(Result.CODE_INVALID_PARAMS, "Player state payload is too large.")
+	# rating の項目が無ければ今の値のまま、null なら消す。
+	var rating: Variant = _mock_player_state.get("rating") if _mock_player_state is Dictionary else null
+	if params.has("rating"):
+		rating = params["rating"]
+		if rating != null and not GRushMockPlayerStates.is_rating(rating):
+			return Result.failure(Result.CODE_INVALID_PARAMS, "Invalid rating.")
 	var revision := 1
 	if _mock_player_state is Dictionary:
 		revision = int(_mock_player_state["revision"]) + 1
@@ -144,6 +178,7 @@ func _set_player_state(params: Dictionary) -> Dictionary:
 		"pseudoId": _local_pseudo_id(),
 		"payload": payload,
 		"revision": revision,
+		"rating": null if rating == null else float(rating),
 		"updatedAt": "",
 	}
 	return Result.ok({"state": _mock_player_state})
@@ -297,11 +332,4 @@ static func _state() -> ConfigFile:
 
 
 static func _local_pseudo_id() -> String:
-	var config := _state()
-	var stored := str(config.get_value(STATE_SECTION, "pseudo_id", ""))
-	if stored != "":
-		return stored
-	var created := "mock-local-" + str(randi()) + str(randi())
-	config.set_value(STATE_SECTION, "pseudo_id", created)
-	config.save(STATE_PATH)
-	return created
+	return GRushMock.local_pseudo_id()

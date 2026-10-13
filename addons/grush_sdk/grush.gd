@@ -23,6 +23,8 @@ const LocaleMock := preload("res://addons/grush_sdk/grush_locale_mock.gd")
 const AnalyticsApi := preload("res://addons/grush_sdk/grush_analytics_api.gd")
 const AnalyticsWeb := preload("res://addons/grush_sdk/grush_analytics_web.gd")
 const AnalyticsMock := preload("res://addons/grush_sdk/grush_analytics_mock.gd")
+const InboxApi := preload("res://addons/grush_sdk/grush_inbox_api.gd")
+const TradeApi := preload("res://addons/grush_sdk/grush_trade_api.gd")
 
 var backend: RefCounted
 var player: RefCounted
@@ -33,6 +35,10 @@ var share: RefCounted
 var locale: RefCounted
 ## 作者のアナリティクスへ送るイベント。どれも同期で bool を返す。
 var analytics: RefCounted
+## 受信箱。同じゲームのプレイヤーへ小さい構造化メッセージを送り、受け取る。
+var inbox: RefCounted
+## 交換所。アイテムを出品し、同じゲームの別のプレイヤーが受ける。
+var trade: RefCounted
 
 
 func _ready() -> void:
@@ -53,6 +59,8 @@ func use_backend(replacement: RefCounted) -> void:
 	share = ShareApi.new(self, _share_transport(backend))
 	locale = LocaleApi.new(self, _locale_transport(backend))
 	analytics = AnalyticsApi.new(self, _analytics_transport(backend))
+	inbox = InboxApi.new(self, backend)
+	trade = TradeApi.new(self, backend)
 
 
 func _dispose() -> void:
@@ -68,6 +76,8 @@ func _dispose() -> void:
 	share = null
 	locale = null
 	analytics = null
+	inbox = null
+	trade = null
 
 
 func is_available() -> bool:

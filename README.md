@@ -4,7 +4,7 @@ GameRush の GameAPI を Godot 4 から呼ぶアドオン。ビルドの書き�
 
 ## 導入
 
-[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.2.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
+[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.4.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
 
 書き出しは Web。それ以外のプラットフォームでは自動的にモックへ落ちる。
 
@@ -23,6 +23,61 @@ if joined["ok"]:
 ```
 
 すべての API は `{"ok": bool, "value": Variant, "code": String, "message": String}` を返し、例外を投げない（アナリティクスは `bool` を返す。下記）。GameRush の外で動かした場合は `ok` が `false`、`code` が `"unsupported"` になるだけで、ゲームは止まらない。
+
+### 相手探し
+
+```gdscript
+await GRush.player_state.set_mine({"deck": "fire", "level": 12}, null, {"rating": 1520})
+var found: Dictionary = await GRush.player_state.sample({"count": 5, "min_rating": 1400, "max_rating": 1600})
+if found["ok"]:
+    for rival in found["value"]:
+        print(rival["pseudo_id"], rival["rating"], rival["payload"])
+```
+
+`sample` は同じゲームの他プレイヤーの公開状態をランダムに返す（`count` は 1〜20、既定 10）。自分と運営が伏せた状態は返らず、名前も返らない。`min_rating` と `max_rating` は一緒に渡し、範囲を渡すと `rating` の無い状態は返らない。`set_mine` の第3引数の `rating` は -1e9 より大きく 1e9 より小さい数値で、`null` で消し、渡さなければ今の値のまま。書かれていない `rating` は `null`。古い GameRush（`protocolVersion` 7 未満）では `sample` が `unsupported`、`set_mine` は `rating` を送らずに payload だけを書く。
+
+### 受信箱
+
+```gdscript
+await GRush.inbox.send(rival_pseudo_id, "battleResult", {"stage": 3, "win": true})
+var inbox: Dictionary = await GRush.inbox.list({"unread_only": true})
+if inbox["ok"]:
+    for message in inbox["value"]["messages"]:
+        print(message["from"], message["kind"], message["payload"])
+```
+
+同じゲームの疑似 ID 宛てに、小さい構造化メッセージ（非同期対戦の結果の通知など）を送る。ゲストも送受信できる。**payload で文章や画像は送れない。** payload は辞書で、文字列の値とキーは識別子（`^[A-Za-z0-9_.:-]{1,32}$`）だけ、ほかは数値・真偽値・null。入れ子は最上位を 1 段目として 4 段まで、値は合計 64 個まで、JSON にして 1KB まで。`kind` は `^[A-Za-z0-9._:-]{1,32}$`。合わなければ `invalidParams`。利用者どうしの文章や画像のやりとりには使わない。
+
+`list` の value は `{"messages", "unread_count", "next_cursor"}` で、新しい順（`limit` は 1〜50、既定 20）。続きは `next_cursor` を `cursor` に渡す。`mark_read` / `remove` は 1 回 50 件まで。`report(message_id)` は GameRush が確認を出し、承諾されたら `true`。通報すると送り手をブロックし、その相手のメッセージと出品は見えなくなる。ゲストは `signInRequired`。古い GameRush（`protocolVersion` 7 未満）ではどれも `unsupported`。
+
+### 交換所
+
+```gdscript
+# 1. 出すアイテムをセーブで仮置きにし、2. operation_id と一緒に保存してから出品する。
+var created: Dictionary = await GRush.trade.create(
+    {"item": "sword", "count": 1}, {"item": "gem", "count": 3}, save["escrow_operation_id"],
+    {"offer_key": "sword", "want_key": "gem"}
+)
+
+# 4. 終わった取引をセーブへ反映し、保存してから ack する。5. 取引 ID で二度反映しない。
+var mine: Dictionary = await GRush.trade.mine()
+```
+
+プレイヤーがアイテムを出品し、同じゲームの別のプレイヤーが `accept(trade_id, give)` で受ける。ゲストも出品・受諾できる。GameRush はアイテムの正当性を確かめず、交換が片方だけ成立しないことと、終わった取引を取りこぼさないことだけを保証する。
+
+取りこぼさないために、次の順で使う。
+
+1. 出品の前に、出すアイテムを手元のセーブで仮置き（使えない状態）にする
+2. `operation_id`（`^[A-Za-z0-9._:-]{1,64}$`）をセーブに保存してから `create` する
+3. 応答が失われたら、同じ `operation_id` で呼び直す。同じ `operation_id` の再送は、中身によらず先に作った出品を返す
+4. `mine()` の `pending` をセーブに反映し、クラウドセーブに保存してから `ack` する
+5. 反映済みの取引 ID をセーブに持ち、同じ取引を二度反映しない
+
+`pending` の `action` は `receiveGive`（出品者が `give` を受け取る）・`returnOffer`（出品者が `offer` を戻す。取り下げ・期限切れ・運営の非表示）・`receiveOffer`（受けた側が `offer` を受け取る）。知らない値は反映せず、ack もしない。
+
+**offer・want・give で文章や画像は送れない。** 形は受信箱の payload と同じで、大きさは JSON にして offer 2KB・want 1KB・give 2KB まで。利用者どうしの文章や画像のやりとりには使わない。
+
+`accept` は先に取られた・期限切れ・取り下げ・見えない出品をエラーにせず、`outcome`（`matched` / `taken` / `expired` / `cancelled` / `notFound`）で返す。`trade` は `matched` のときだけ入る。同じ取引への再送は `matched`。`create` の options の `to` に疑似 ID を渡すと指名の出品になり、`expires_in_sec` は 600〜604800（既定 3 日）。受付中の出品は 1 人 10 件まで。`list` は他人の公開の出品と自分宛ての指名の出品のうち、受付中のもの（新しい順）。`report(trade_id)` は GameRush が確認を出し、承諾されたら `true`。通報すると出品者をブロックする。古い GameRush（`protocolVersion` 7 未満）ではどれも `unsupported`。
 
 ### 共有
 
@@ -92,7 +147,17 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 
 共有のモックは確認シートを出さず、`GRushMock.share_status`（既定 `"opened"`）を返す。`GRushMock.share_available = false` で共有できない環境を試せる。本文と画像の検査はしない。
 
-アナリティクスのモックは、GameRush と同じ検査をして、通ったイベントを1件ずつ出力し、直近の 200 件を `GRushMock.analytics_events`（GameRush へ渡すのと同じ形の Dictionary の配列）に持つ。弾いたイベントは、GameRush と同じく理由ごとに1回だけ警告する。前面に出るまでの 30 件の溜め・本体の上限・同じステップを最初の1回だけ残す扱い・セッションあたりの上限は再現しないので、モックでは `true` の分がすべて記録に残る。どこへも送らない。モックが名乗る `protocol_version` は 6。モックを使うのは Web 以外の書き出しとエディタだけで、Web の書き出しを GameRush の外で開いたときは、どの呼び出しも `false` になる。
+アナリティクスのモックは、GameRush と同じ検査をして、通ったイベントを1件ずつ出力し、直近の 200 件を `GRushMock.analytics_events`（GameRush へ渡すのと同じ形の Dictionary の配列）に持つ。弾いたイベントは、GameRush と同じく理由ごとに1回だけ警告する。前面に出るまでの 30 件の溜め・本体の上限・同じステップを最初の1回だけ残す扱い・セッションあたりの上限は再現しないので、モックでは `true` の分がすべて記録に残る。どこへも送らない。モックが名乗る `protocol_version` は 7。モックを使うのは Web 以外の書き出しとエディタだけで、Web の書き出しを GameRush の外で開いたときは、どの呼び出しも `false` になる。
+
+相手探し・受信箱・交換所のモックは、`GRushMock.RIVALS` の 3 人の相手を持つ。相手はそれぞれ rating 付きの公開プレイヤー状態を持ち、届いたメッセージを同じ kind と payload で送り返す。はじめと `GRushMockInbox.reset()` / `GRushMockTrades.reset()` の後は、最初の相手からのメッセージ1通と、相手の受付中の出品を2件持つ。payload・offer・want・give の形、`operation_id` での冪等、受付中の出品の上限、受諾の `outcome`、`pending` と ack は GameRush と同じ規則で動く（バイト数は Godot の `JSON.stringify` で数えるので、`3.0` のような小数点の付く数値を GameRush より多く数えることがある）。通報を承諾すると（`GRushMock.confirm_inbox_report` / `confirm_trade_report`、既定 `true`）相手をブロックし、その相手のメッセージと出品は見えなくなる。
+
+```gdscript
+GRushMockInbox.receive(GRushMock.RIVALS[0], "battleResult", {"stage": 3, "win": false})
+var listing = GRushMockTrades.offer(GRushMock.RIVALS[1], {"item": "bow"}, {"item": "gem"}, {"to_self": true})
+GRushMockTrades.accept(my_trade_id, {"item": "gem"})  # 相手が受けて、自分の pending に receiveGive が載る
+GRushMockTrades.expire(listing["id"])
+GRushMockPlayerStates.define("custom-rival", {"level": 3}, false, 1300)
+```
 
 **`unreliable_drop_rate` は既定 0 だが、出荷前に必ず 0 より大きくして試すこと。** WebSocket 中継では `unreliable` も落ちずに届くため、パケットが落ちる前提で書けているかを確認できる場所はエディタのモックだけになる。
 
