@@ -4,7 +4,7 @@ GameRush の GameAPI を Godot 4 から呼ぶアドオン。ビルドの書き�
 
 ## 導入
 
-[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.6.1`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
+[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.7.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
 
 書き出しは Web。それ以外のプラットフォームでは自動的にモックへ落ちる。
 
@@ -104,6 +104,22 @@ if fetched["ok"]:
 
 GameRush 本体の表示言語を読む。`value` は `{"locale": "ja-JP", "source": "user", "languages": PackedStringArray}`。`source` は `"user"`（プレイヤーが選んだ）・`"system"`（アプリの端末設定）・`"device"`（ブラウザの言語）で、今後増えても動くように書く。`GRush.locale.current()` は取得済みなら同じ Dictionary、まだなら `null` を返す。表示言語が決まったとき・変わったときに `changed` が発火する（JS の呼び出しの中ではなく `call_deferred` で後から配るので、取得の途中の変更を取りこぼさないよう `fetch` より先に接続する）。古い GameRush（`protocol_version` 4 未満）では `fetch` が `unsupported`、`current` が `null`。
 
+### 起動パラメータ
+
+```gdscript
+var launched: Dictionary = await GRush.launch.fetch()
+if launched["ok"]:
+    var item: String = launched["value"]["params"].get("item", "")
+    if item != "" and owns_item(item):
+        open_item(item)
+```
+
+GameRush の URL に `gp.` を付けて載せたキーと値を読む。ゲームのページの URL が `/g/<コード>?gp.item=sword&gp.stage=3` なら `value` は `{"params": {"item": "sword", "stage": "3"}}`（キーも値も `String`）。シェアしたリンクから特定のアイテムやステージへ飛ばすのに使う。
+
+**値を信用しない。** リンクは誰でも作れる。アイテムが存在するか・プレイヤーが持っているか・ステージが解放済みかをゲームの側で確かめ、確かめられなければ無視する。
+
+キーは英数字と `_-` で 32 文字まで（`__proto__` は使えない）、値は英数字と `._~:,-` で 128 文字まで（空も可）、8 個まで。形の合わない項目は GameRush が落とし、8 個を超えたら全部落とす。渡るのは、プレイヤーが最初に開いたスライドのゲームだけで、別のゲームへスワイプして戻ったときは `params` が空。フィードではページを読み直すと空になるが、単体表示や埋め込みでは読み直すと同じ値がまた渡ることがあるので、何度渡っても困らないように書く。`fetch` は GameRush から届くまで待ち、`GRush.launch.current()` は届く前なら `null`。古い GameRush（`protocol_version` 8 未満）と GameRush の外では `fetch` が `unsupported`、`current` が `null`。
+
 ### アナリティクス
 
 ```gdscript
@@ -152,9 +168,11 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 
 表示言語のモックは `GRushMock.locale`（例 `"en-US"`、`source` は `"user"`）を返し、空なら `OS.get_locale()` を BCP47 に直して `source: "device"` で返す。
 
+起動パラメータのモックは `GRushMock.launch_params`（既定 `{}`。例 `GRushMock.launch_params = {"item": "sword"}`）をそのまま返す。GameRush の制限では確かめない。
+
 共有のモックは確認シートを出さず、`GRushMock.share_status`（既定 `"opened"`）を返す。`GRushMock.share_available = false` で共有できない環境を試せる。本文と画像の検査はしない。
 
-アナリティクスのモックは、GameRush と同じ検査をして、通ったイベントを1件ずつ出力し、直近の 200 件を `GRushMock.analytics_events`（GameRush へ渡すのと同じ形の Dictionary の配列）に持つ。弾いたイベントは、GameRush と同じく理由ごとに1回だけ警告する。前面に出るまでの 30 件の溜め・本体の上限・同じステップを最初の1回だけ残す扱い・セッションあたりの上限は再現しないので、モックでは `true` の分がすべて記録に残る。どこへも送らない。モックが名乗る `protocol_version` は 7。モックを使うのは Web 以外の書き出しとエディタだけで、Web の書き出しを GameRush の外で開いたときは、どの呼び出しも `false` になる。
+アナリティクスのモックは、GameRush と同じ検査をして、通ったイベントを1件ずつ出力し、直近の 200 件を `GRushMock.analytics_events`（GameRush へ渡すのと同じ形の Dictionary の配列）に持つ。弾いたイベントは、GameRush と同じく理由ごとに1回だけ警告する。前面に出るまでの 30 件の溜め・本体の上限・同じステップを最初の1回だけ残す扱い・セッションあたりの上限は再現しないので、モックでは `true` の分がすべて記録に残る。どこへも送らない。モックが名乗る `protocol_version` は 8。モックを使うのは Web 以外の書き出しとエディタだけで、Web の書き出しを GameRush の外で開いたときは、どの呼び出しも `false` になる。
 
 相手探し・受信箱・交換所のモックは、`GRushMock.RIVALS` の 3 人の相手を持つ。相手はそれぞれ rating 付きの公開プレイヤー状態を持ち、届いたメッセージを同じ kind と payload で送り返す。はじめと `GRushMockInbox.reset()` / `GRushMockTrades.reset()` の後は、最初の相手からのメッセージ1通と、相手の受付中の出品を2件持つ。payload・offer・want・give の形、`operation_id` での冪等、受付中の出品の上限、受諾の `outcome`、`pending` と ack は GameRush と同じ規則で動く（バイト数は Godot の `JSON.stringify` で数えるので、`3.0` のような小数点の付く数値を GameRush より多く数えることがある）。通報を承諾すると（`GRushMock.confirm_inbox_report` / `confirm_trade_report`、既定 `true`）相手をブロックし、その相手のメッセージと出品は見えなくなる。プレイヤー状態の通報は伏せていない状態にだけ届き、確認の答えを `GRushMock.confirm_player_state_report`（既定 `true`）で決める。
 

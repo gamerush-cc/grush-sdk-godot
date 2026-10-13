@@ -6,7 +6,7 @@ const MockPeer := preload("res://addons/grush_sdk/grush_mock_peer.gd")
 const STATE_PATH := GRushMock.STATE_PATH
 const STATE_SECTION := GRushMock.STATE_SECTION
 # モックが実装している一番新しい機能（相手探し・受信箱・交換所）の版数。
-const MOCK_PROTOCOL_VERSION := 7
+const MOCK_PROTOCOL_VERSION := 8
 
 var _members: Array = []
 var _outgoing_seq: Dictionary = {}

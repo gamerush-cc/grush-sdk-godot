@@ -24,6 +24,9 @@ static var max_peers := 8
 static var share_available := true
 static var share_status := "opened"
 static var locale := ""
+## `GRush.launch` が返す起動パラメータ（`gp.` を除いたキーと値。どちらも String）。
+## GameRush の制限（キー・値の形と 8 個まで）では確かめずにそのまま返す。
+static var launch_params: Dictionary = {}
 ## モックが受けた分析イベント。GameRush へ渡すのと同じ形の Dictionary で、直近の 200 件を古い順に持つ。
 ## 空にするときは clear() する。
 static var analytics_events: Array[Dictionary] = []

@@ -20,6 +20,9 @@ const ShareMock := preload("res://addons/grush_sdk/grush_share_mock.gd")
 const LocaleApi := preload("res://addons/grush_sdk/grush_locale_api.gd")
 const LocaleWeb := preload("res://addons/grush_sdk/grush_locale_web.gd")
 const LocaleMock := preload("res://addons/grush_sdk/grush_locale_mock.gd")
+const LaunchApi := preload("res://addons/grush_sdk/grush_launch_api.gd")
+const LaunchWeb := preload("res://addons/grush_sdk/grush_launch_web.gd")
+const LaunchMock := preload("res://addons/grush_sdk/grush_launch_mock.gd")
 const AnalyticsApi := preload("res://addons/grush_sdk/grush_analytics_api.gd")
 const AnalyticsWeb := preload("res://addons/grush_sdk/grush_analytics_web.gd")
 const AnalyticsMock := preload("res://addons/grush_sdk/grush_analytics_mock.gd")
@@ -33,6 +36,9 @@ var leaderboards: RefCounted
 var player_state: RefCounted
 var share: RefCounted
 var locale: RefCounted
+## 起動パラメータ。GameRush の URL に `gp.` を付けて載せたキーと値で、シェアしたリンクから
+## 特定のアイテムやステージへ飛ばすのに使う。値は信用せず、ゲームの側で確かめてから使う。
+var launch: RefCounted
 ## 作者のアナリティクスへ送るイベント。どれも同期で bool を返す。
 var analytics: RefCounted
 ## 受信箱。同じゲームのプレイヤーへ小さい構造化メッセージを送り、受け取る。
@@ -58,6 +64,7 @@ func use_backend(replacement: RefCounted) -> void:
 	player_state = PlayerStateApi.new(self, backend)
 	share = ShareApi.new(self, _share_transport(backend))
 	locale = LocaleApi.new(self, _locale_transport(backend))
+	launch = LaunchApi.new(self, _launch_transport(backend))
 	analytics = AnalyticsApi.new(self, _analytics_transport(backend))
 	inbox = InboxApi.new(self, backend)
 	trade = TradeApi.new(self, backend)
@@ -68,6 +75,8 @@ func _dispose() -> void:
 		net.dispose()
 	if locale != null:
 		locale.dispose()
+	if launch != null:
+		launch.dispose()
 	backend = null
 	player = null
 	net = null
@@ -75,6 +84,7 @@ func _dispose() -> void:
 	player_state = null
 	share = null
 	locale = null
+	launch = null
 	analytics = null
 	inbox = null
 	trade = null
@@ -128,6 +138,14 @@ func _locale_transport(active: RefCounted) -> RefCounted:
 		return LocaleWeb.new()
 	if active is MockBackend:
 		return LocaleMock.new()
+	return null
+
+
+func _launch_transport(active: RefCounted) -> RefCounted:
+	if active is WebBackend:
+		return LaunchWeb.new()
+	if active is MockBackend:
+		return LaunchMock.new()
 	return null
 
 
