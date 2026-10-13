@@ -26,7 +26,8 @@ func _init(grush: Node, backend: RefCounted) -> void:
 
 
 ## [param to]（同じゲームの疑似 ID）へ送る。[param kind] は `^[A-Za-z0-9._:-]{1,32}$`。
-## 送れたら value が true。
+## 送れたら value が true。同じゲームの疑似 ID でない宛先は invalidParams、送りすぎ（毎時・毎日の上限）は
+## rateLimited（時間が経てば回復する）。
 func send(to: String, kind: String, payload: Dictionary) -> Dictionary:
 	var response := await _call("inbox.send", {"to": to, "kind": kind, "payload": payload})
 	if not response["ok"]:

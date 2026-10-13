@@ -42,6 +42,8 @@ func _init(grush: Node, backend: RefCounted) -> void:
 ## 出品する。[param operation_id] は `^[A-Za-z0-9._:-]{1,64}$` の出品の識別子で、呼ぶ前に
 ## セーブへ保存しておく。[param options] は `offer_key` / `want_key`（一覧の絞り込みに使う識別子）・
 ## `to`（指名の出品の相手の疑似 ID）・`expires_in_sec`（600〜604800、既定 3 日）。
+## 受付中の出品が 10 件あるときは invalidParams（待っても直らない。取り下げるか、成立・期限切れを待つ）。
+## 毎日 30 件の出品の上限は rateLimited（時間が経てば回復する）。
 func create(offer: Dictionary, want: Dictionary, operation_id: String, options: Dictionary = {}) -> Dictionary:
 	var params := {"offer": offer, "want": want, "operationId": operation_id}
 	if options.get("offer_key") != null:
