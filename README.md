@@ -4,7 +4,7 @@ GameRush の GameAPI を Godot 4 から呼ぶアドオン。ビルドの書き�
 
 ## 導入
 
-[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.7.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
+[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.8.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
 
 書き出しは Web。それ以外のプラットフォームでは自動的にモックへ落ちる。
 
@@ -93,6 +93,16 @@ if await GRush.share.is_available():
 
 GameRush の確認シートが出て、プレイヤーが送り先を押したときに共有が開く。`value` は `{"status": "opened"}` か `{"status": "cancelled"}` だけ。`share` の画像は PNG にして base64 で渡す。`share_screen` はゲームの canvas のスクショを送る。自前の画像を送るなら `share(text, image)`（`Image`）。共有は 5 秒に 1 回までなので、1 回のボタン操作で呼ぶのはどちらか一方にする。共有したことを条件に報酬を出さない。本文は 100 文字までで、URL と @メンションを含むと `invalidParams`。古い GameRush（`protocol_version` 3 未満）では `unsupported`。
 
+#### 起動パラメータを添える
+
+```gdscript
+var shared: Dictionary = await GRush.share.share_screen("ステージ3に挑戦", {"stage": "3"})
+if not shared["ok"] and shared["code"] == "unsupported":
+    shared = await GRush.share.share_screen("ステージ3に挑戦")
+```
+
+`share(text, image, launch_params)` と `share_screen(text, launch_params)` は、共有リンクに `?gp.stage=3` のように起動パラメータを載せる。リンクを開いた人のゲームでは `GRush.launch` に渡る（下の「起動パラメータ」）。キーと値は String で、制限は「起動パラメータ」と同じ。1つでも合わなければ共有を開かずに `invalidParams`。空の Dictionary は渡さないときと同じ。古い GameRush（`protocol_version` 9 未満）では、共有を開かずに `unsupported` を返すので、起動パラメータを外して呼び直せば共有できる。**リンクは誰にでも見え、そのまま転送される。** プレイヤーを識別できる値（招待コードなど）を入れない。受け取る側のゲームは値を信用せず、確かめてから使う。
+
 ### 表示言語
 
 ```gdscript
@@ -170,9 +180,9 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 
 起動パラメータのモックは `GRushMock.launch_params`（既定 `{}`。例 `GRushMock.launch_params = {"item": "sword"}`）をそのまま返す。GameRush の制限では確かめない。
 
-共有のモックは確認シートを出さず、`GRushMock.share_status`（既定 `"opened"`）を返す。`GRushMock.share_available = false` で共有できない環境を試せる。本文と画像の検査はしない。
+共有のモックは確認シートを出さず、`GRushMock.share_status`（既定 `"opened"`）を返す。`GRushMock.share_available = false` で共有できない環境を試せる。起動パラメータは GameRush と同じ制限で確かめ、合わなければ `invalidParams`。本文と画像の検査はしない。
 
-アナリティクスのモックは、GameRush と同じ検査をして、通ったイベントを1件ずつ出力し、直近の 200 件を `GRushMock.analytics_events`（GameRush へ渡すのと同じ形の Dictionary の配列）に持つ。弾いたイベントは、GameRush と同じく理由ごとに1回だけ警告する。前面に出るまでの 30 件の溜め・本体の上限・同じステップを最初の1回だけ残す扱い・セッションあたりの上限は再現しないので、モックでは `true` の分がすべて記録に残る。どこへも送らない。モックが名乗る `protocol_version` は 8。モックを使うのは Web 以外の書き出しとエディタだけで、Web の書き出しを GameRush の外で開いたときは、どの呼び出しも `false` になる。
+アナリティクスのモックは、GameRush と同じ検査をして、通ったイベントを1件ずつ出力し、直近の 200 件を `GRushMock.analytics_events`（GameRush へ渡すのと同じ形の Dictionary の配列）に持つ。弾いたイベントは、GameRush と同じく理由ごとに1回だけ警告する。前面に出るまでの 30 件の溜め・本体の上限・同じステップを最初の1回だけ残す扱い・セッションあたりの上限は再現しないので、モックでは `true` の分がすべて記録に残る。どこへも送らない。モックが名乗る `protocol_version` は 9。モックを使うのは Web 以外の書き出しとエディタだけで、Web の書き出しを GameRush の外で開いたときは、どの呼び出しも `false` になる。
 
 相手探し・受信箱・交換所のモックは、`GRushMock.RIVALS` の 3 人の相手を持つ。相手はそれぞれ rating 付きの公開プレイヤー状態を持ち、届いたメッセージを同じ kind と payload で送り返す。はじめと `GRushMockInbox.reset()` / `GRushMockTrades.reset()` の後は、最初の相手からのメッセージ1通と、相手の受付中の出品を2件持つ。payload・offer・want・give の形、`operation_id` での冪等、受付中の出品の上限、受諾の `outcome`、`pending` と ack は GameRush と同じ規則で動く（バイト数は Godot の `JSON.stringify` で数えるので、`3.0` のような小数点の付く数値を GameRush より多く数えることがある）。通報を承諾すると（`GRushMock.confirm_inbox_report` / `confirm_trade_report`、既定 `true`）相手をブロックし、その相手のメッセージと出品は見えなくなる。プレイヤー状態の通報は伏せていない状態にだけ届き、確認の答えを `GRushMock.confirm_player_state_report`（既定 `true`）で決める。
 

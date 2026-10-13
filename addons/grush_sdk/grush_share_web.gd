@@ -58,6 +58,11 @@ static func _options_of(params: Dictionary) -> JavaScriptObject:
 		options.image = encoded
 	elif image != null:
 		options.image = str(image)
+	var launch_params: Variant = params.get("launchParams")
+	if launch_params is Dictionary:
+		# JSON.parse は __proto__ も自前の項目として作るので、GameRush がそのキーを確かめて拒める。
+		# 代入で作ると __proto__ は黙って消える。
+		options.launchParams = JavaScriptBridge.get_interface("JSON").parse(JSON.stringify(launch_params))
 	return options
 
 
