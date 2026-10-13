@@ -285,6 +285,7 @@ func _bind_room(room: Variant) -> Variant:
 			{"kind": "transportchange", "transport": str(args[0]["transport"])}
 		)
 	)
+	_listen("error", func(args: Array) -> void: _on_error(args))
 	_listen("close", func(args: Array) -> void: _on_close(args))
 	return JSON.parse_string(str(_room.describeJson()))
 
@@ -293,6 +294,17 @@ func _listen(event_name: String, handler: Callable) -> void:
 	var callback := JavaScriptBridge.create_callback(handler)
 	_room_callbacks.append(callback)
 	_room.on(event_name, callback)
+
+
+func _on_error(args: Array) -> void:
+	var code := ""
+	var message := ""
+	if args.size() > 0 and args[0] != null:
+		if args[0]["code"] != null:
+			code = str(args[0]["code"])
+		if args[0]["message"] != null:
+			message = str(args[0]["message"])
+	_emit({"kind": "error", "code": code, "message": message})
 
 
 func _on_close(args: Array) -> void:

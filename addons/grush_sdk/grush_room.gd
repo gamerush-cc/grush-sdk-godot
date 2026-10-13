@@ -9,6 +9,10 @@ signal peer_joined(peer: Dictionary)
 signal peer_left(index: int)
 signal host_changed(index: int)
 signal transport_changed(transport: String)
+## 部屋が1通を捨てたときに届く。[code]{"code": String, "message": String}[/code] で、code は
+## [code]"messageTooLarge"[/code]・[code]"rateLimited"[/code]・[code]"badFrame"[/code]。ほかの値が届くこともある。
+## 部屋はつながったままで、続けて送れる。部屋が閉じるときは [signal closed] だけが届く。
+signal error_received(error: Dictionary)
 signal closed(reason: String)
 
 var room_id := ""
@@ -104,6 +108,10 @@ func apply(event: Dictionary) -> void:
 		"transportchange":
 			_transport = str(event.get("transport", _transport))
 			transport_changed.emit(_transport)
+		"error":
+			error_received.emit(
+				{"code": str(event.get("code", "")), "message": str(event.get("message", ""))}
+			)
 		"close":
 			_mark_closed(str(event.get("reason", "")))
 

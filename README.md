@@ -4,7 +4,7 @@ GameRush の GameAPI を Godot 4 から呼ぶアドオン。ビルドの書き�
 
 ## 導入
 
-[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.5.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
+[リリース](https://github.com/gamerush-cc/grush-sdk-godot/releases)から版（例: `v1.6.0`）を選んで取得し、`addons/grush_sdk/` をプロジェクトの `addons/` へコピーし、`Project > Project Settings > Plugins` で **GameRush SDK** を有効にする。有効化すると autoload シングルトン `GRush` が自動で登録される。
 
 書き出しは Web。それ以外のプラットフォームでは自動的にモックへ落ちる。
 
@@ -19,8 +19,11 @@ var joined: Dictionary = await GRush.net.join("duel")
 if joined["ok"]:
     var room: GRushRoom = joined["value"]
     room.message_received.connect(func(message: Dictionary) -> void: print(message["from"]))
+    room.error_received.connect(func(error: Dictionary) -> void: push_warning(error["code"]))
     room.send(payload, GRush.CHANNEL_UNRELIABLE, GRush.EVERYONE)
 ```
+
+部屋が1通を捨てると `error_received` が `{"code": String, "message": String}` で届く。`code` は `"messageTooLarge"`・`"rateLimited"`・`"badFrame"` で、ほかの値が届くこともある。部屋はつながったままで、続けて送れる。部屋が閉じるときは `closed` だけが届く。
 
 すべての API は `{"ok": bool, "value": Variant, "code": String, "message": String}` を返し、例外を投げない（アナリティクスは `bool` を返す。下記）。GameRush の外で動かした場合は `ok` が `false`、`code` が `"unsupported"` になるだけで、ゲームは止まらない。
 
@@ -144,6 +147,8 @@ opponent.received.connect(func(message: Dictionary) -> void: opponent.send(reply
 ```
 
 `GRush.mock_add_peer` で作った相手は同じプロセス内の2人目の peer として部屋に入り、送受信が実際に往復する。
+
+`GRush.mock_raise_room_error(code, message)` は、自分がいる部屋に `error_received` を届ける（次のフレーム以降に届き、部屋は閉じない）。部屋にいなければ `false` を返す。
 
 表示言語のモックは `GRushMock.locale`（例 `"en-US"`、`source` は `"user"`）を返し、空なら `OS.get_locale()` を BCP47 に直して `source: "device"` で返す。
 

@@ -64,6 +64,13 @@ func remove_peer(peer: RefCounted) -> void:
 	_announce("peerleave", peer.index, {})
 
 
+func raise_room_error(code: String, message: String) -> bool:
+	if _local_index < 0:
+		return false
+	_deliver_local.call_deferred({"kind": "error", "code": code, "message": message})
+	return true
+
+
 func route(from: int, payload: PackedByteArray, channel: String, to: int) -> void:
 	if channel == "unreliable" and _random.randf() < GRushMock.unreliable_drop_rate:
 		return

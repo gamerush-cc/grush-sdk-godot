@@ -43,6 +43,9 @@ func _ready() -> void:
 	_room.transport_changed.connect(
 		func(transport: String) -> void: _status = "Transport is now %s." % transport
 	)
+	_room.error_received.connect(
+		func(error: Dictionary) -> void: push_warning("Room dropped a message: %s" % error["code"])
+	)
 	_room.closed.connect(func(reason: String) -> void: _status = "Room closed: %s" % reason)
 	_status = "You are the host." if _room.is_host() else "Waiting for the host."
 

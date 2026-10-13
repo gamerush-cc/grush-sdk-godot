@@ -101,6 +101,14 @@ func mock_remove_peer(peer: RefCounted) -> void:
 		backend.remove_peer(peer)
 
 
+## モックで、自分がいる部屋に [signal GRushRoom.error_received] を届ける。次のフレーム以降に届き、
+## 部屋は閉じない。部屋にいないときと、モックでないときは何もせず [code]false[/code] を返す。
+func mock_raise_room_error(code: String, message: String) -> bool:
+	if backend == null or not backend.has_method("raise_room_error"):
+		return false
+	return backend.raise_room_error(code, message)
+
+
 func _create_backend() -> RefCounted:
 	if WebBackend.is_present():
 		return WebBackend.new()
