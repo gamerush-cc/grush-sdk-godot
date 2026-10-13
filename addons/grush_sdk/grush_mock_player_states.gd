@@ -41,6 +41,22 @@ static func exists(pseudo_id: String) -> bool:
 	return _states.has(pseudo_id)
 
 
+## 運営が伏せていない状態があるか。get・report から見える相手かどうか。
+static func is_visible(pseudo_id: String) -> bool:
+	_ensure_rivals()
+	return _states.has(pseudo_id) and not bool(_states[pseudo_id]["hidden"])
+
+
+## 実サーバと同じく、未ログインと、見えない相手（無い・伏せた）への通報を弾く。
+static func handle_report(params: Dictionary) -> Dictionary:
+	if not GRushMock.signed_in:
+		return Result.failure(Result.CODE_SIGN_IN_REQUIRED, "Reporting requires sign-in.")
+	var pseudo_id: Variant = params.get("pseudoId")
+	if not (pseudo_id is String) or not is_visible(pseudo_id):
+		return _invalid("No player state for that id.")
+	return Result.ok({"reported": GRushMock.confirm_player_state_report})
+
+
 static func is_rating(value: Variant) -> bool:
 	if not (value is int or value is float):
 		return false

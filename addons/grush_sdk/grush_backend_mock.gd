@@ -128,7 +128,7 @@ func _handle(method: String, params: Dictionary) -> Dictionary:
 		"playerState.get":
 			return Result.ok({"states": GRushMockPlayerStates.get_many(params.get("pseudoIds", []))})
 		"playerState.report":
-			return Result.ok({"reported": GRushMock.confirm_player_state_report})
+			return GRushMockPlayerStates.handle_report(params)
 		"playerState.sample":
 			return GRushMockPlayerStates.sample(params, _local_pseudo_id())
 		"inbox.send":
