@@ -14,6 +14,14 @@ var _disposed := false
 
 func _init(grush: Node, transport: RefCounted) -> void:
 	_grush = grush
+	use_transport(transport)
+
+
+## 言語の値の受け取り口を差し替える。changed への接続はそのまま、新しい受け取り口の通知が届く。
+## GRush.use_backend が呼ぶ。
+func use_transport(transport: RefCounted) -> void:
+	if _transport != null:
+		_transport.dispose()
 	_transport = transport
 	if _supported():
 		_transport.watch(func(info: Dictionary) -> void: _on_changed(info))
