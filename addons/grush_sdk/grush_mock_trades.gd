@@ -208,7 +208,8 @@ static func handle_create(params: Dictionary, self_id: String) -> Dictionary:
 		if trade["from"] == self_id and trade["status"] == "open":
 			open += 1
 	if open >= MAX_OPEN_TRADES:
-		return Result.failure(Result.CODE_RATE_LIMITED, "Too many open trades.")
+		# GameRush と同じく、待っても直らない上限なので rateLimited にしない。
+		return Result.failure(Result.CODE_INVALID_PARAMS, "Too many open trades. Cancel an open trade first.")
 	var created := _open(self_id, params["offer"], params["want"], params, to, operation_id)
 	return Result.ok({"trade": _wire(created, self_id)})
 

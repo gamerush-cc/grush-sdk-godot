@@ -75,6 +75,8 @@ var mine: Dictionary = await GRush.trade.mine()
 
 `pending` の `action` は `receiveGive`（出品者が `give` を受け取る）・`returnOffer`（出品者が `offer` を戻す。取り下げ・期限切れ・運営の非表示）・`receiveOffer`（受けた側が `offer` を受け取る）。知らない値は反映せず、ack もしない。
 
+受付中の出品が 10 件あるときの `create` は `invalidParams` で、待っても直らない（取り下げるか、成立・期限切れを待つ）。毎日 30 件の出品と毎時 30 件の受諾の上限は `rateLimited` で、時間が経てば回復する。
+
 **offer・want・give で文章や画像は送れない。** 形は受信箱の payload と同じで、大きさは JSON にして offer 2KB・want 1KB・give 2KB まで。利用者どうしの文章や画像のやりとりには使わない。
 
 `accept` は先に取られた・期限切れ・取り下げ・見えない出品をエラーにせず、`outcome`（`matched` / `taken` / `expired` / `cancelled` / `notFound`）で返す。`trade` は `matched` のときだけ入る。同じ取引への再送は `matched`。`create` の options の `to` に疑似 ID を渡すと指名の出品になり、`expires_in_sec` は 600〜604800（既定 3 日）。受付中の出品は 1 人 10 件まで。`list` は他人の公開の出品と自分宛ての指名の出品のうち、受付中のもの（新しい順）。`report(trade_id)` は GameRush が確認を出し、承諾されたら `true`。通報すると出品者をブロックする。古い GameRush（`protocolVersion` 7 未満）ではどれも `unsupported`。
